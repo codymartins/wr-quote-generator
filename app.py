@@ -3,10 +3,55 @@ Quote Generator for Waste Robotics
 Author: Cody Martins
 '''
 import streamlit as st
+from PIL import Image
 import pandas as pd
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
 
+# --- WR Branding Setup ---
+logo = Image.open("logoWasteRobotics (1).png")  # Make sure this file is in the same directory
+st.sidebar.image(logo, use_column_width=True)
+
+st.markdown("""
+    <style>
+        .reportview-container {
+            background-color: #0F0F0F;
+            color: white;
+        }
+        .sidebar .sidebar-content {
+            background-color: #1A1A1A;
+        }
+        h1, h2, h3 {
+            color: #EF3A2D;
+        }
+        .stButton>button {
+            background-color: #EF3A2D;
+            color: white;
+            border: none;
+            padding: 0.5em 1em;
+            font-weight: bold;
+        }
+        .stButton>button:hover {
+            background-color: #c23024;
+        }
+        footer {
+            visibility: hidden;
+        }
+        .footer {
+            position: fixed;
+            bottom: 0;
+            width: 100%;
+            background-color: #1A1A1A;
+            color: white;
+            text-align: center;
+            padding: 5px;
+            font-size: 12px;
+        }
+    </style>
+    """, unsafe_allow_html=True)
+
+st.markdown("<h1>Waste Robotics Quote Generator</h1>", unsafe_allow_html=True)
+st.markdown("<p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>", unsafe_allow_html=True)
 # --- Constants ---
 CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
 PRICING = {
