@@ -9,8 +9,8 @@ from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
 
 # --- WR Branding Setup ---
-# logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
-# st.sidebar.image(logo, use_container_width=True)
+logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
+st.sidebar.image(logo, use_container_width=True)
 
 st.markdown("""
     <style>
@@ -50,8 +50,12 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("<h1>Waste Robotics Quote Generator</h1>", unsafe_allow_html=True)
+st.markdown("""
+    <h1 style='color: #EF3A2D;'>Waste Robotics Quote Generator</h1>
+    <p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>
+""", unsafe_allow_html=True)
 st.markdown("<p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>", unsafe_allow_html=True)
+
 # --- Constants ---
 CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
 PRICING = {
@@ -348,3 +352,17 @@ with tab5:
                 file_name=file_name,
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
+st.markdown("""
+    <div class="footer" style='
+        position: fixed;
+        bottom: 0;
+        width: 100%;
+        background-color: #1A1A1A;
+        color: white;
+        text-align: center;
+        padding: 5px;
+        font-size: 12px;
+    '>
+        © 2025 Waste Robotics | Internal Tool
+    </div>
+""", unsafe_allow_html=True)
