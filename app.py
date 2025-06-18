@@ -10,7 +10,7 @@ from docx.shared import Mm
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
-st.sidebar.image(logo, use_container_width=True)
+# st.sidebar.image(logo, use_container_width=True)
 
 st.markdown("""
     <style>
