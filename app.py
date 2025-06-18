@@ -10,7 +10,12 @@ from docx.shared import Mm
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
-st.sidebar.image(logo, use_container_width=True)
+col1, col2 = st.columns([1, 6])
+with col1:
+    st.image("logoWasteRobotics(1).png", width=80)
+with col2:
+    st.markdown("<h1 style='color: white;'>Waste Robotics Quote Generator</h1>", unsafe_allow_html=True)
+    st.markdown("<p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>", unsafe_allow_html=True)
 
 st.markdown("""
     <style>
@@ -50,11 +55,7 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
-st.markdown("""
-    <h1 style='color: #EF3A2D;'>Waste Robotics Quote Generator</h1>
-    <p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>
-""", unsafe_allow_html=True)
-st.markdown("<p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>", unsafe_allow_html=True)
+
 
 # --- Constants ---
 CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
@@ -79,8 +80,6 @@ PRICING = {
 }
 
 # --- UI ---
-st.title("Waste Robotics Quote Generator")
-
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
     "Proposal Info", 
     "System Config", 
