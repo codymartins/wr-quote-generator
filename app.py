@@ -103,7 +103,7 @@ with tab1:
 
 with tab2:
     st.header("System Configuration")
-    st.progress(20, text="Step 2 of 5")
+    st.progress(40, text="Step 2 of 5")
     materials = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"])
     try_and_buy = st.checkbox("Include Try & Buy Option?")
     conveyor_included = st.selectbox("Conveyor Provided?", ["Yes", "No"])
@@ -118,7 +118,7 @@ with tab2:
 
 with tab3:
     st.header("Technical Specs")
-    st.progress(20, text="Step 3 of 5")
+    st.progress(60, text="Step 3 of 5")
     max_object_weight = st.number_input("Maximum Object Weight per Robot (kg)", min_value=0.0)
     robot_bases = st.number_input("Number of Robot Bases", min_value=0)
     vision_system = st.multiselect("Robot Vision System", ["RGB Camera", "3D Camera"])
@@ -128,7 +128,7 @@ with tab3:
 
 with tab4:
     st.header("Shipping & Timeline")
-    st.progress(20, text="Step 4 of 5")
+    st.progress(80, text="Step 4 of 5")
     shipping_distance = st.text_input("Estimated Shipping Distance (miles or km)")
     timeline = {
         "Order Confirmation / Project Kickoff": st.text_input("Order Confirmation / Project Kickoff Duration"),
@@ -142,7 +142,7 @@ with tab4:
 
 with tab5:
     st.header("Inclusions & Final Quote")
-    st.progress(20, text="Step 5 of 5")
+    st.progress(100, text="Step 5 of 5")
     security_perimeter = st.checkbox("Include Security Perimeter?")
     software_license = st.checkbox("Include Perpetual Software License?")
     ai_training = st.checkbox("Include AI Custom Training?")
