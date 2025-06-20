@@ -147,278 +147,154 @@ with tab5:
     sat = st.checkbox("Include Site Acceptance Test (SAT)?")
     installation_by_wr = st.selectbox("Will WR handle site modifications and installation?", ["Yes", "No", "Partially"])
 
-    if st.button("Generate Quote"):
-        # ----- PRICE BREAKDOWN -----
-        # --- Input Validation ---
-        missing_fields = []
+if st.button("Generate Quote"): 
+    # --- Input Validation ---
+    missing_fields = []
 
-        # Proposal Info
-        if not value_proposition.strip():
-            missing_fields.append("Value Proposition")
-        if not client_name.strip():
-            missing_fields.append("Client Name")
-        if not client_company.strip():
-            missing_fields.append("Client Company Name")
-        if not salesman_name.strip():
-            missing_fields.append("Salesperson Name")
-        if not site_location.strip():
-            missing_fields.append("Site Location")
-        if not application_overview.strip():
-            missing_fields.append("Application Overview")
+    # Proposal Info
+    if not value_proposition.strip():
+        missing_fields.append("Value Proposition")
+    if not client_name.strip():
+        missing_fields.append("Client Name")
+    if not client_company.strip():
+        missing_fields.append("Client Company Name")
+    if not salesman_name.strip():
+        missing_fields.append("Salesperson Name")
+    if not site_location.strip():
+        missing_fields.append("Site Location")
+    if not application_overview.strip():
+        missing_fields.append("Application Overview")
 
-        # System Config
-        if not materials:
-            missing_fields.append("Materials to Sort")
-        if conveyor_included == "Yes" and not conveyor_size.strip():
-            missing_fields.append("Conveyor Size")
-        if not belt_speed.strip():
-            missing_fields.append("Belt Speed")
-        if not pick_rate.strip():
-            missing_fields.append("Pick Rate")
-        if not robot_type:
-            missing_fields.append("Robot Type")
-        if not gripper_type:
-            missing_fields.append("Gripper Type")
+    # System Config
+    if not materials:
+        missing_fields.append("Materials to Sort")
+    if conveyor_included == "Yes" and not conveyor_size.strip():
+        missing_fields.append("Conveyor Size")
+    if not belt_speed.strip():
+        missing_fields.append("Belt Speed")
+    if not pick_rate.strip():
+        missing_fields.append("Pick Rate")
+    if not robot_type:
+        missing_fields.append("Robot Type")
+    if not gripper_type:
+        missing_fields.append("Gripper Type")
 
-        # Technical Specs
-        if max_object_weight == 0.0:
-            missing_fields.append("Max Object Weight")
-        if robot_bases == 0:
-            missing_fields.append("Number of Robot Bases")
-        if not vision_system:
-            missing_fields.append("Vision System")
-        if input_power_kva == 0.0:
-            missing_fields.append("Input Power")
-        if avg_consumption_kw == 0.0:
-            missing_fields.append("Average Power Consumption")
-        if air_consumption_lpm == 0:
-            missing_fields.append("Air Consumption")
+    # Technical Specs
+    if max_object_weight == 0.0:
+        missing_fields.append("Max Object Weight")
+    if robot_bases == 0:
+        missing_fields.append("Number of Robot Bases")
+    if not vision_system:
+        missing_fields.append("Vision System")
+    if input_power_kva == 0.0:
+        missing_fields.append("Input Power")
+    if avg_consumption_kw == 0.0:
+        missing_fields.append("Average Power Consumption")
+    if air_consumption_lpm == 0:
+        missing_fields.append("Air Consumption")
 
-        # Shipping & Timeline
-        if not shipping_distance.strip():
-            missing_fields.append("Shipping Distance")
-        for step, duration in timeline.items():
-            if not duration.strip():
-                missing_fields.append(f"Timeline: {step}")
+    # Shipping & Timeline
+    if not shipping_distance.strip():
+        missing_fields.append("Shipping Distance")
+    for step, duration in timeline.items():
+        if not duration.strip():
+            missing_fields.append(f"Timeline: {step}")
 
-        # Show error and stop if any fields are missing
-        if missing_fields:
-            st.error("Please fill in all required fields:\n- " + "\n- ".join(missing_fields))
-            st.stop()
+    if missing_fields:
+        st.error("Please fill in all required fields:\n- " + "\n- ".join(missing_fields))
+        st.stop()
 
-        def calculate_price_breakdown(inputs):
-            breakdown = []
-            breakdown.append({
-                "Component": "Robot Arm",
-                "Description": inputs["robot_type"],
-                "Unit Price": PRICING["robot_arm"],
-                "Qty": inputs["robot_arms"],
-                "Subtotal": PRICING["robot_arm"] * inputs["robot_arms"]
-            })
-            breakdown.append({
-                "Component": "Grippers",
-                "Description": ", ".join(inputs["gripper_type"]),
-                "Unit Price": PRICING["gripper"],
-                "Qty": len(inputs["gripper_type"]),
-                "Subtotal": PRICING["gripper"] * len(inputs["gripper_type"])
-            })
-            if inputs["conveyor_included"] == "Yes":
-                breakdown.append({
-                    "Component": "Conveyor",
-                    "Description": f"{inputs['conveyor_size']} inch belt",
-                    "Unit Price": PRICING["conveyor"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["conveyor"]
-                })
-            breakdown.append({
-                "Component": "Hypervision Scanners",
-                "Description": "2D + 3D Scanning",
-                "Unit Price": PRICING["hypervision_scanner"],
-                "Qty": inputs["hypervision_scanners"],
-                "Subtotal": PRICING["hypervision_scanner"] * inputs["hypervision_scanners"]
-            })
-            if inputs["ai_training"]:
-                breakdown.append({
-                    "Component": "AI Custom Training",
-                    "Description": "Trash / PCBs / UBCs",
-                    "Unit Price": PRICING["ai_training"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["ai_training"]
-                })
-            if inputs["software_license"]:
-                breakdown.append({
-                    "Component": "Software License",
-                    "Description": "Perpetual",
-                    "Unit Price": PRICING["software_license"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["software_license"]
-                })
-            if inputs["fat"]:
-                breakdown.append({
-                    "Component": "Factory Pre-Assembly (FAT)",
-                    "Description": "Pre-assembly and testing",
-                    "Unit Price": PRICING["fat"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["fat"]
-                })
-            if inputs["try_and_buy"]:
-                breakdown.append({
-                    "Component": "Try & Buy Second Arm",
-                    "Description": "Deferred Payment",
-                    "Unit Price": PRICING["try_and_buy_arm"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["try_and_buy_arm"]
-                })
-            if inputs["installation_by_wr"] == "Yes":
-                breakdown.append({
-                    "Component": "Installation by WR",
-                    "Description": "Full on-site implementation",
-                    "Unit Price": PRICING["installation"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["installation"]
-                })
-            try:
-                dist = float(inputs["shipping_distance"])
-                shipping_cost = dist * PRICING["shipping_per_km"]
-                breakdown.append({
-                    "Component": "Shipping",
-                    "Description": f"{dist} km at ${PRICING['shipping_per_km']}/km",
-                    "Unit Price": PRICING["shipping_per_km"],
-                    "Qty": dist,
-                    "Subtotal": shipping_cost
-                })
-            except:
-                pass
-            mod_key = f"modification_{inputs['modification_scale'].lower()}"
-            breakdown.append({
-                "Component": "Modification Scope",
-                "Description": inputs["modification_scale"],
-                "Unit Price": PRICING[mod_key],
-                "Qty": 1,
-                "Subtotal": PRICING[mod_key]
-            })
-            if inputs["security_perimeter"]:
-                breakdown.append({
-                    "Component": "Security Perimeter",
-                    "Description": "Robot safety fencing",
-                    "Unit Price": PRICING["security_perimeter"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["security_perimeter"]
-                })
-            if inputs["warranty"]:
-                breakdown.append({
-                    "Component": "Warranty (1 year)",
-                    "Description": "Parts + labor coverage",
-                    "Unit Price": PRICING["warranty"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["warranty"]
-                })
-            if inputs["pe_stamp"]:
-                breakdown.append({
-                    "Component": "PE Stamp",
-                    "Description": "Professional engineer review",
-                    "Unit Price": PRICING["pe_stamp"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["pe_stamp"]
-                })
-            if inputs["sat"]:
-                breakdown.append({
-                    "Component": "Site Acceptance Test (SAT)",
-                    "Description": "Final performance check",
-                    "Unit Price": PRICING["sat"],
-                    "Qty": 1,
-                    "Subtotal": PRICING["sat"]
-                })
-            return breakdown
+    # --- SAFE TO EXECUTE BELOW THIS LINE ---
 
-        inputs = {
-            "robot_arms": robot_arms,
-            "gripper_type": gripper_type,
-            "conveyor_included": conveyor_included,
-            "conveyor_size": conveyor_size,
-            "hypervision_scanners": hypervision_scanners,
-            "ai_training": ai_training,
-            "software_license": software_license,
-            "fat": fat,
-            "try_and_buy": try_and_buy,
-            "installation_by_wr": installation_by_wr,
-            "robot_type": robot_type,
-            "shipping_distance": shipping_distance,
-            "modification_scale": modification_scale,
-            "security_perimeter": security_perimeter,
-            "warranty": warranty,
-            "pe_stamp": pe_stamp,
-            "sat": sat
-        }
+    # Calculate pricing
+    inputs = {
+        "robot_arms": robot_arms,
+        "gripper_type": gripper_type,
+        "conveyor_included": conveyor_included,
+        "conveyor_size": conveyor_size,
+        "hypervision_scanners": hypervision_scanners,
+        "ai_training": ai_training,
+        "software_license": software_license,
+        "fat": fat,
+        "try_and_buy": try_and_buy,
+        "installation_by_wr": installation_by_wr,
+        "robot_type": robot_type,
+        "shipping_distance": shipping_distance,
+        "modification_scale": modification_scale,
+        "security_perimeter": security_perimeter,
+        "warranty": warranty,
+        "pe_stamp": pe_stamp,
+        "sat": sat
+    }
 
-        df = pd.DataFrame(calculate_price_breakdown(inputs))
-        multiplier = CURRENCY_CONVERSION.get(currency, 1.0)
-        df["Unit Price"] *= multiplier
-        df["Subtotal"] *= multiplier
+    df = pd.DataFrame(calculate_price_breakdown(inputs))
+    multiplier = CURRENCY_CONVERSION.get(currency, 1.0)
+    df["Unit Price"] *= multiplier
+    df["Subtotal"] *= multiplier
 
-        total = df["Subtotal"].sum()
-        st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
-        st.markdown(f"### **Total Estimated Price: {currency} {total:,.0f}**")
+    total = df["Subtotal"].sum()
+    st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
+    st.markdown(f"### **Total Estimated Price: {currency} {total:,.0f}**")
 
-        # --- DOCX Generation ---
-        doc = DocxTemplate("template_practice.docx")
-        layout_image = InlineImage(doc, f"layout_{robot_arms}_arms.png", width=Mm(100), height=Mm(80))
-        layout_overview_image = InlineImage(doc, f"overview_{robot_arms}_arms.png", width=Mm(150), height=Mm(80))
-        robot_model_image = InlineImage(doc, "fanuc_m20id25.png", width=Mm(100), height=Mm(80))
-        if gripper_type:
-            base_name = gripper_type[0].lower().replace(" ", "_")
-            gripper_filename = f"gripper_{base_name}.png"
-        else:
-            gripper_filename = "gripper_default.png"
+    # --- DOCX Generation ---
+    doc = DocxTemplate("template_practice.docx")
+    layout_image = InlineImage(doc, f"layout_{robot_arms}_arms.png", width=Mm(100), height=Mm(80))
+    layout_overview_image = InlineImage(doc, f"overview_{robot_arms}_arms.png", width=Mm(150), height=Mm(80))
+    robot_model_image = InlineImage(doc, "fanuc_m20id25.png", width=Mm(100), height=Mm(80))
 
-        # Prevent crash if file doesn't exist
-        if not os.path.exists(gripper_filename):
-            gripper_filename = "gripper_default.png"
+    if gripper_type:
+        base_name = gripper_type[0].lower().replace(" ", "_")
+        gripper_filename = f"gripper_{base_name}.png"
+    else:
+        gripper_filename = "gripper_default.png"
 
-        gripper_image = InlineImage(doc, gripper_filename, width=Mm(100), height=Mm(80))
+    if not os.path.exists(gripper_filename):
+        gripper_filename = "gripper_default.png"
 
+    gripper_image = InlineImage(doc, gripper_filename, width=Mm(100), height=Mm(80))
 
-        context = {
-            "value_proposition": value_proposition,
-            "application_overview": application_overview,
-            "client_name": client_name,
-            "client_company": client_company,
-            "quote_date": quote_date.strftime("%B %d, %Y"),
-            "site_location": site_location,
-            "robot_type": robot_type,
-            "robot_arms": robot_arms,
-            "materials": ", ".join(materials),
-            "belt_speed": belt_speed,
-            "pick_rate": pick_rate,
-            "max_object_weight": max_object_weight,
-            "robot_bases": robot_bases,
-            "vision_system": ", ".join(vision_system),
-            "input_power_kva": input_power_kva,
-            "avg_consumption_kw": avg_consumption_kw,
-            "air_consumption_lpm": air_consumption_lpm,
-            "timeline": timeline,
-            "total_price": f"{currency} {total:,.0f}",
-            "layout_image": layout_image,
-            "gripper_type": ", ".join(gripper_type),
-            "additional_arm_price": f"{currency} {PRICING['try_and_buy_arm'] * multiplier:,.0f}",
-            "gripper_image": gripper_image,
-            "layout_overview_image": layout_overview_image,
-            "robot_model_image": robot_model_image
-        }
+    context = {
+        "value_proposition": value_proposition,
+        "application_overview": application_overview,
+        "client_name": client_name,
+        "client_company": client_company,
+        "quote_date": quote_date.strftime("%B %d, %Y"),
+        "site_location": site_location,
+        "robot_type": robot_type,
+        "robot_arms": robot_arms,
+        "materials": ", ".join(materials),
+        "belt_speed": belt_speed,
+        "pick_rate": pick_rate,
+        "max_object_weight": max_object_weight,
+        "robot_bases": robot_bases,
+        "vision_system": ", ".join(vision_system),
+        "input_power_kva": input_power_kva,
+        "avg_consumption_kw": avg_consumption_kw,
+        "air_consumption_lpm": air_consumption_lpm,
+        "timeline": timeline,
+        "total_price": f"{currency} {total:,.0f}",
+        "layout_image": layout_image,
+        "gripper_type": ", ".join(gripper_type),
+        "additional_arm_price": f"{currency} {PRICING['try_and_buy_arm'] * multiplier:,.0f}",
+        "gripper_image": gripper_image,
+        "layout_overview_image": layout_overview_image,
+        "robot_model_image": robot_model_image
+    }
 
-        file_name = f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.docx"
-        doc.render(context)
-        doc.save(file_name)
+    file_name = f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.docx"
+    doc.render(context)
+    doc.save(file_name)
 
-        st.success("✅ Quote generated successfully!")
+    st.success("✅ Quote generated successfully!")
 
-        with open(file_name, "rb") as f:
-            st.download_button(
-                label="📄 Download Quote DOCX",
-                data=f,
-                file_name=file_name,
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
+    with open(file_name, "rb") as f:
+        st.download_button(
+            label="📄 Download Quote DOCX",
+            data=f,
+            file_name=file_name,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        )
+
 st.markdown("""
     <div class="footer" style='
         position: fixed;
