@@ -453,6 +453,8 @@
 
 # Waste Robotics Quote Generator (Wizard Version)
 # Author: Cody Martins (Wizard Flow Refactor)
+# Waste Robotics Quote Generator (Wizard Version)
+# Author: Cody Martins (Wizard Flow Refactor)
 
 import streamlit as st
 from PIL import Image
@@ -522,7 +524,25 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
-PRICING = {"robot_arm": 45000, "gripper": 6000, "conveyor": 8000, "hypervision_scanner": 12000, "ai_training": 15000, "software_license": 5000, "fat": 4000, "try_and_buy_arm": 90000, "installation": 30000, "shipping_per_km": 3.5, "modification_small": 5000, "modification_medium": 15000, "modification_large": 30000, "security_perimeter": 2500, "warranty": 8000, "pe_stamp": 2000, "sat": 6000}
+PRICING = {
+    "robot_arm": 45000,
+    "gripper": 6000,
+    "conveyor": 8000,
+    "hypervision_scanner": 12000,
+    "ai_training": 15000,
+    "software_license": 5000,
+    "fat": 4000,
+    "try_and_buy_arm": 90000,
+    "installation": 30000,
+    "shipping_per_km": 3.5,
+    "modification_small": 5000,
+    "modification_medium": 15000,
+    "modification_large": 30000,
+    "security_perimeter": 2500,
+    "warranty": 8000,
+    "pe_stamp": 2000,
+    "sat": 6000
+}
 
 step = st.session_state.step
 st.progress((step + 1) / total_steps, text=f"Step {step + 1} of {total_steps}: {steps[step]}")
@@ -532,24 +552,22 @@ if step > 0:
         st.session_state.step -= 1
         st.stop()
 
-# --- [Steps 0 to 4 unchanged here for brevity] ---
+fd = st.session_state.form_data
 
-# --- Step 5: Inclusions & Quote ---
+# [Steps 0–3 unchanged here...]
+
 elif step == 4:
-    st.subheader("Inclusions & Final Quote")
-    fd = st.session_state.form_data
-    fd.update({
-        "security_perimeter": st.checkbox("Include Security Perimeter?"),
-        "software_license": st.checkbox("Include Software License?"),
-        "ai_training": st.checkbox("Include AI Custom Training?"),
-        "warranty": st.checkbox("Include Warranty?"),
-        "fat": st.checkbox("Include FAT?"),
-        "pe_stamp": st.checkbox("Include PE Stamp?"),
-        "sat": st.checkbox("Include SAT?"),
-        "installation_by_wr": st.selectbox("Installation by WR?", ["Yes", "No", "Partially"])
-    })
+    st.subheader("Inclusions & Quote")
+    fd["security_perimeter"] = st.checkbox("Include Security Perimeter?")
+    fd["software_license"] = st.checkbox("Include Software License?")
+    fd["ai_training"] = st.checkbox("Include AI Training?")
+    fd["warranty"] = st.checkbox("Include Warranty?")
+    fd["fat"] = st.checkbox("Include FAT?")
+    fd["pe_stamp"] = st.checkbox("Include PE Stamp?")
+    fd["sat"] = st.checkbox("Include SAT?")
+    fd["installation_by_wr"] = st.selectbox("Installation by WR?", ["Yes", "No", "Partially"])
 
-    if st.button("Generate Quote"):
+    if st.button("Generate Quote ✅"):
         try:
             doc = DocxTemplate("template_practice.docx")
 
@@ -564,6 +582,38 @@ elif step == 4:
             robot_model_image = InlineImage(doc, "fanuc_m20id25.png", width=Mm(100), height=Mm(80))
             gripper_image = InlineImage(doc, gripper_filename, width=Mm(100), height=Mm(80))
 
+            def calculate_price_breakdown(inputs):
+                breakdown = []
+                breakdown.append({"Component": "Robot Arm", "Description": inputs["robot_type"], "Unit Price": PRICING["robot_arm"], "Qty": inputs["robot_arms"], "Subtotal": PRICING["robot_arm"] * inputs["robot_arms"]})
+                breakdown.append({"Component": "Grippers", "Description": ", ".join(inputs["gripper_type"]), "Unit Price": PRICING["gripper"], "Qty": len(inputs["gripper_type"]), "Subtotal": PRICING["gripper"] * len(inputs["gripper_type"])})
+                if inputs["conveyor_included"] == "Yes":
+                    breakdown.append({"Component": "Conveyor", "Description": f"{inputs['conveyor_size']} inch", "Unit Price": PRICING["conveyor"], "Qty": 1, "Subtotal": PRICING["conveyor"]})
+                breakdown.append({"Component": "Hypervision Scanners", "Description": "2D + 3D", "Unit Price": PRICING["hypervision_scanner"], "Qty": inputs["hypervision_scanners"], "Subtotal": PRICING["hypervision_scanner"] * inputs["hypervision_scanners"]})
+                if inputs["ai_training"]: breakdown.append({"Component": "AI Training", "Unit Price": PRICING["ai_training"], "Qty": 1, "Subtotal": PRICING["ai_training"]})
+                if inputs["software_license"]: breakdown.append({"Component": "Software License", "Unit Price": PRICING["software_license"], "Qty": 1, "Subtotal": PRICING["software_license"]})
+                if inputs["fat"]: breakdown.append({"Component": "FAT", "Unit Price": PRICING["fat"], "Qty": 1, "Subtotal": PRICING["fat"]})
+                if inputs["try_and_buy"]: breakdown.append({"Component": "Try & Buy", "Unit Price": PRICING["try_and_buy_arm"], "Qty": 1, "Subtotal": PRICING["try_and_buy_arm"]})
+                if inputs["installation_by_wr"] == "Yes": breakdown.append({"Component": "Installation", "Unit Price": PRICING["installation"], "Qty": 1, "Subtotal": PRICING["installation"]})
+                try:
+                    km = float(inputs["shipping_distance"])
+                    breakdown.append({"Component": "Shipping", "Description": f"{km} km", "Unit Price": PRICING["shipping_per_km"], "Qty": km, "Subtotal": km * PRICING["shipping_per_km"]})
+                except: pass
+                mod_key = f"modification_{inputs['modification_scale'].lower()}"
+                breakdown.append({"Component": "Modification Scope", "Description": inputs["modification_scale"], "Unit Price": PRICING[mod_key], "Qty": 1, "Subtotal": PRICING[mod_key]})
+                if inputs["security_perimeter"]: breakdown.append({"Component": "Security Perimeter", "Unit Price": PRICING["security_perimeter"], "Qty": 1, "Subtotal": PRICING["security_perimeter"]})
+                if inputs["warranty"]: breakdown.append({"Component": "Warranty", "Unit Price": PRICING["warranty"], "Qty": 1, "Subtotal": PRICING["warranty"]})
+                if inputs["pe_stamp"]: breakdown.append({"Component": "PE Stamp", "Unit Price": PRICING["pe_stamp"], "Qty": 1, "Subtotal": PRICING["pe_stamp"]})
+                if inputs["sat"]: breakdown.append({"Component": "SAT", "Unit Price": PRICING["sat"], "Qty": 1, "Subtotal": PRICING["sat"]})
+                return breakdown
+
+            df = pd.DataFrame(calculate_price_breakdown(fd))
+            multiplier = CURRENCY_CONVERSION.get(fd["currency"], 1.0)
+            df["Unit Price"] *= multiplier
+            df["Subtotal"] *= multiplier
+
+            total = df["Subtotal"].sum()
+            st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
+
             context = {
                 **fd,
                 "materials": ", ".join(fd["materials"]),
@@ -574,49 +624,19 @@ elif step == 4:
                 "gripper_image": gripper_image,
                 "layout_overview_image": layout_overview_image,
                 "robot_model_image": robot_model_image,
-                "additional_arm_price": f"{fd['currency']} {PRICING['try_and_buy_arm'] * CURRENCY_CONVERSION[fd['currency']]:,.0f}"
+                "total_price": f"{fd['currency']} {total:,.0f}",
+                "additional_arm_price": f"{fd['currency']} {PRICING['try_and_buy_arm'] * multiplier:,.0f}"
             }
 
-            def calculate_price_breakdown(inputs):
-                breakdown = []
-                breakdown.append({"Component": "Robot Arm", "Description": inputs["robot_type"], "Unit Price": PRICING["robot_arm"], "Qty": inputs["robot_arms"], "Subtotal": PRICING["robot_arm"] * inputs["robot_arms"]})
-                breakdown.append({"Component": "Grippers", "Description": ", ".join(inputs["gripper_type"]), "Unit Price": PRICING["gripper"], "Qty": len(inputs["gripper_type"]), "Subtotal": PRICING["gripper"] * len(inputs["gripper_type"])})
-                if inputs["conveyor_included"] == "Yes":
-                    breakdown.append({"Component": "Conveyor", "Description": f"{inputs['conveyor_size']} inch", "Unit Price": PRICING["conveyor"], "Qty": 1, "Subtotal": PRICING["conveyor"]})
-                breakdown.append({"Component": "Hypervision Scanners", "Description": "2D + 3D", "Unit Price": PRICING["hypervision_scanner"], "Qty": inputs["hypervision_scanners"], "Subtotal": PRICING["hypervision_scanner"] * inputs["hypervision_scanners"]})
-                if inputs["ai_training"]: breakdown.append({"Component": "AI Training", "Description": "", "Unit Price": PRICING["ai_training"], "Qty": 1, "Subtotal": PRICING["ai_training"]})
-                if inputs["software_license"]: breakdown.append({"Component": "Software License", "Description": "Perpetual", "Unit Price": PRICING["software_license"], "Qty": 1, "Subtotal": PRICING["software_license"]})
-                if inputs["fat"]: breakdown.append({"Component": "FAT", "Description": "", "Unit Price": PRICING["fat"], "Qty": 1, "Subtotal": PRICING["fat"]})
-                if inputs["try_and_buy"]: breakdown.append({"Component": "Try & Buy", "Description": "", "Unit Price": PRICING["try_and_buy_arm"], "Qty": 1, "Subtotal": PRICING["try_and_buy_arm"]})
-                if inputs["installation_by_wr"] == "Yes": breakdown.append({"Component": "Installation", "Description": "", "Unit Price": PRICING["installation"], "Qty": 1, "Subtotal": PRICING["installation"]})
-                try:
-                    km = float(inputs["shipping_distance"])
-                    breakdown.append({"Component": "Shipping", "Description": f"{km} km", "Unit Price": PRICING["shipping_per_km"], "Qty": km, "Subtotal": km * PRICING["shipping_per_km"]})
-                except: pass
-                mod_key = f"modification_{inputs['modification_scale'].lower()}"
-                breakdown.append({"Component": "Modification Scope", "Description": inputs["modification_scale"], "Unit Price": PRICING[mod_key], "Qty": 1, "Subtotal": PRICING[mod_key]})
-                if inputs["security_perimeter"]: breakdown.append({"Component": "Security Perimeter", "Description": "", "Unit Price": PRICING["security_perimeter"], "Qty": 1, "Subtotal": PRICING["security_perimeter"]})
-                if inputs["warranty"]: breakdown.append({"Component": "Warranty", "Description": "", "Unit Price": PRICING["warranty"], "Qty": 1, "Subtotal": PRICING["warranty"]})
-                if inputs["pe_stamp"]: breakdown.append({"Component": "PE Stamp", "Description": "", "Unit Price": PRICING["pe_stamp"], "Qty": 1, "Subtotal": PRICING["pe_stamp"]})
-                if inputs["sat"]: breakdown.append({"Component": "SAT", "Description": "", "Unit Price": PRICING["sat"], "Qty": 1, "Subtotal": PRICING["sat"]})
-                return breakdown
-
-            df = pd.DataFrame(calculate_price_breakdown(fd))
-            multiplier = CURRENCY_CONVERSION.get(fd["currency"], 1.0)
-            df["Unit Price"] *= multiplier
-            df["Subtotal"] *= multiplier
-            context["total_price"] = f"{fd['currency']} {df['Subtotal'].sum():,.0f}"
-            st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
-
             doc.render(context)
-            filename = f"{fd['client_name']}_Quote_{fd['quote_date'].strftime('%Y%m%d')}.docx"
-            doc.save(filename)
+            file_name = f"{fd['client_name']}_Quote_{fd['quote_date'].strftime('%Y%m%d')}.docx"
+            doc.save(file_name)
 
-            with open(filename, "rb") as f:
+            with open(file_name, "rb") as f:
                 st.download_button(
                     label="📄 Download Quote DOCX",
                     data=f,
-                    file_name=filename,
+                    file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
 
