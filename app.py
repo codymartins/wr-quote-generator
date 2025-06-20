@@ -7,6 +7,7 @@ from PIL import Image
 import pandas as pd
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
+import os
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
@@ -364,8 +365,18 @@ with tab5:
         layout_image = InlineImage(doc, f"layout_{robot_arms}_arms.png", width=Mm(100), height=Mm(80))
         layout_overview_image = InlineImage(doc, f"overview_{robot_arms}_arms.png", width=Mm(150), height=Mm(80))
         robot_model_image = InlineImage(doc, "fanuc_m20id25.png", width=Mm(100), height=Mm(80))
-        gripper_filename = f"gripper_{gripper_type[0].lower().replace(' ', '_')}.png" if gripper_type else "gripper_default.png"
+        if gripper_type:
+            base_name = gripper_type[0].lower().replace(" ", "_")
+            gripper_filename = f"gripper_{base_name}.png"
+        else:
+            gripper_filename = "gripper_default.png"
+
+        # Prevent crash if file doesn't exist
+        if not os.path.exists(gripper_filename):
+            gripper_filename = "gripper_default.png"
+
         gripper_image = InlineImage(doc, gripper_filename, width=Mm(100), height=Mm(80))
+
 
         context = {
             "value_proposition": value_proposition,
