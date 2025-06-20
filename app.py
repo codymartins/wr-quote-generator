@@ -456,12 +456,37 @@
 # Waste Robotics Quote Generator (Wizard Version)
 # Author: Cody Martins (Wizard Flow Refactor)
 
+# Waste Robotics Quote Generator (Wizard Version)
+# Author: Cody Martins (Wizard Flow Refactor)
+
 import streamlit as st
 from PIL import Image
 import pandas as pd
 from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
 import os
+
+# --- Constants ---
+CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
+PRICING = {
+    "robot_arm": 45000,
+    "gripper": 6000,
+    "conveyor": 8000,
+    "hypervision_scanner": 12000,
+    "ai_training": 15000,
+    "software_license": 5000,
+    "fat": 4000,
+    "try_and_buy_arm": 90000,
+    "installation": 30000,
+    "shipping_per_km": 3.5,
+    "modification_small": 5000,
+    "modification_medium": 15000,
+    "modification_large": 30000,
+    "security_perimeter": 2500,
+    "warranty": 8000,
+    "pe_stamp": 2000,
+    "sat": 6000
+}
 
 # --- Session State Setup ---
 if "step" not in st.session_state:
@@ -523,63 +548,137 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
-PRICING = {
-    "robot_arm": 45000,
-    "gripper": 6000,
-    "conveyor": 8000,
-    "hypervision_scanner": 12000,
-    "ai_training": 15000,
-    "software_license": 5000,
-    "fat": 4000,
-    "try_and_buy_arm": 90000,
-    "installation": 30000,
-    "shipping_per_km": 3.5,
-    "modification_small": 5000,
-    "modification_medium": 15000,
-    "modification_large": 30000,
-    "security_perimeter": 2500,
-    "warranty": 8000,
-    "pe_stamp": 2000,
-    "sat": 6000
-}
+# --- Footer ---
+st.markdown("""
+    <div class="footer">
+        © 2025 Waste Robotics | Internal Tool
+    </div>
+""", unsafe_allow_html=True)
 
+# --- Progress Bar and Step Title ---
 step = st.session_state.step
 st.progress((step + 1) / total_steps, text=f"Step {step + 1} of {total_steps}: {steps[step]}")
+
+fd = st.session_state.form_data
 
 if step > 0:
     if st.button("⬅ Back"):
         st.session_state.step -= 1
         st.stop()
 
-fd = st.session_state.form_data
+# --- Step 0: Proposal Info ---
+if step == 0:
+    st.subheader("Proposal Info")
+    fd["quote_date"] = st.date_input("Quote Date")
+    fd["value_proposition"] = st.text_input("Value Proposition")
+    fd["client_name"] = st.text_input("Client Name")
+    fd["client_company"] = st.text_input("Client Company Name")
+    fd["salesman_name"] = st.text_input("Salesperson Name")
+    fd["site_location"] = st.text_input("Site Location")
+    fd["currency"] = st.selectbox("Currency", ["USD", "CAD", "EUR"])
+    fd["application_overview"] = st.text_area("Application Overview")
 
-# [Steps 0–3 unchanged here...]
+    if st.button("Next ➡"):
+        missing = [k for k in ["value_proposition", "client_name", "client_company", "salesman_name", "site_location", "application_overview"] if not fd.get(k)]
+        if missing:
+            st.error("Missing fields: " + ", ".join(missing))
+        else:
+            st.session_state.step += 1
 
+# --- Step 1: System Config ---
+elif step == 1:
+    st.subheader("System Configuration")
+    fd["materials"] = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"])
+    fd["try_and_buy"] = st.checkbox("Include Try & Buy Option?")
+    fd["conveyor_included"] = st.selectbox("Conveyor Provided?", ["Yes", "No"])
+    fd["conveyor_size"] = st.text_input("Conveyor Size (inches)", disabled=(fd["conveyor_included"] == "No"))
+    fd["belt_speed"] = st.text_input("Belt Speed (e.g. 80 ft/min)")
+    fd["pick_rate"] = st.text_input("Pick Rate (e.g. 35 picks/minute)")
+    fd["modification_scale"] = st.selectbox("Modification Scope", ["Small", "Medium", "Large"])
+    fd["hypervision_scanners"] = st.number_input("# of Hypervision Scanners", min_value=0, value=1)
+    fd["robot_type"] = st.selectbox("Robot Type", ["Fanuc LR-Mate 200ID", "Other"])
+    fd["robot_arms"] = st.slider("# of Robot Arms", 1, 3, 2)
+    fd["gripper_type"] = st.multiselect("Gripper Type", ["VentuR (suction)", "PinchR", "Other"])
+
+    if st.button("Next ➡"):
+        missing = []
+        if not fd["materials"]: missing.append("Materials")
+        if fd["conveyor_included"] == "Yes" and not fd["conveyor_size"]: missing.append("Conveyor Size")
+        if not fd["belt_speed"]: missing.append("Belt Speed")
+        if not fd["pick_rate"]: missing.append("Pick Rate")
+        if not fd["gripper_type"]: missing.append("Gripper Type")
+        if missing:
+            st.error("Missing fields: " + ", ".join(missing))
+        else:
+            st.session_state.step += 1
+
+# --- Step 2: Technical Specs ---
+elif step == 2:
+    st.subheader("Technical Specs")
+    fd["max_object_weight"] = st.number_input("Max Object Weight (kg)", min_value=0.0)
+    fd["robot_bases"] = st.number_input("# of Robot Bases", min_value=0)
+    fd["vision_system"] = st.multiselect("Vision System", ["RGB Camera", "3D Camera"])
+    fd["input_power_kva"] = st.number_input("Input Power (kVA)", min_value=0.0)
+    fd["avg_consumption_kw"] = st.number_input("Avg Power Consumption (kW)", min_value=0.0)
+    fd["air_consumption_lpm"] = st.number_input("Air Consumption (L/min)", min_value=0)
+
+    if st.button("Next ➡"):
+        missing = []
+        if fd["max_object_weight"] == 0.0: missing.append("Object Weight")
+        if fd["robot_bases"] == 0: missing.append("Robot Bases")
+        if not fd["vision_system"]: missing.append("Vision System")
+        if fd["input_power_kva"] == 0.0: missing.append("Power")
+        if fd["avg_consumption_kw"] == 0.0: missing.append("Avg Consumption")
+        if fd["air_consumption_lpm"] == 0: missing.append("Air Consumption")
+        if missing:
+            st.error("Missing fields: " + ", ".join(missing))
+        else:
+            st.session_state.step += 1
+
+# --- Step 3: Shipping & Timeline ---
+elif step == 3:
+    st.subheader("Shipping & Timeline")
+    fd["shipping_distance"] = st.text_input("Estimated Shipping Distance (miles/km)")
+    fd["timeline"] = {
+        "Order Confirmation / Project Kickoff": st.text_input("Order Confirmation Duration"),
+        "Detailed Engineering": st.text_input("Detailed Engineering Duration"),
+        "Engineering Review": st.text_input("Engineering Review Duration"),
+        "Procurement and Fabrication": st.text_input("Procurement Duration"),
+        "FAT and Shipping": st.text_input("FAT and Shipping Duration"),
+        "Retrofit and Installation": st.text_input("Retrofit Duration"),
+        "Commissioning and SAT": st.text_input("Commissioning Duration")
+    }
+    if st.button("Next ➡"):
+        if not fd["shipping_distance"].strip():
+            st.error("Shipping distance is required.")
+        elif any(not v.strip() for v in fd["timeline"].values()):
+            st.error("All timeline durations are required.")
+        else:
+            st.session_state.step += 1
+
+# Step 4: Inclusions & Quote
 elif step == 4:
-    st.subheader("Inclusions & Quote")
+    st.subheader("Inclusions & Final Quote")
     fd["security_perimeter"] = st.checkbox("Include Security Perimeter?")
     fd["software_license"] = st.checkbox("Include Software License?")
-    fd["ai_training"] = st.checkbox("Include AI Training?")
+    fd["ai_training"] = st.checkbox("Include AI Custom Training?")
     fd["warranty"] = st.checkbox("Include Warranty?")
     fd["fat"] = st.checkbox("Include FAT?")
     fd["pe_stamp"] = st.checkbox("Include PE Stamp?")
     fd["sat"] = st.checkbox("Include SAT?")
     fd["installation_by_wr"] = st.selectbox("Installation by WR?", ["Yes", "No", "Partially"])
 
-    if st.button("Generate Quote ✅"):
+    if st.button("Generate Quote"):
         try:
             doc = DocxTemplate("template_practice.docx")
-
-            gripper_type = fd["gripper_type"]
-            base_name = gripper_type[0].lower().replace(" ", "_") if gripper_type else "default"
-            gripper_filename = f"gripper_{base_name}.png"
-            if not os.path.exists(gripper_filename):
-                gripper_filename = "gripper_default.png"
-
             layout_image = InlineImage(doc, f"layout_{fd['robot_arms']}_arms.png", width=Mm(100), height=Mm(80))
             layout_overview_image = InlineImage(doc, f"overview_{fd['robot_arms']}_arms.png", width=Mm(150), height=Mm(80))
             robot_model_image = InlineImage(doc, "fanuc_m20id25.png", width=Mm(100), height=Mm(80))
+
+            base_name = fd["gripper_type"][0].lower().replace(" ", "_") if fd["gripper_type"] else "default"
+            gripper_filename = f"gripper_{base_name}.png"
+            if not os.path.exists(gripper_filename):
+                gripper_filename = "gripper_default.png"
             gripper_image = InlineImage(doc, gripper_filename, width=Mm(100), height=Mm(80))
 
             def calculate_price_breakdown(inputs):
@@ -589,30 +688,28 @@ elif step == 4:
                 if inputs["conveyor_included"] == "Yes":
                     breakdown.append({"Component": "Conveyor", "Description": f"{inputs['conveyor_size']} inch", "Unit Price": PRICING["conveyor"], "Qty": 1, "Subtotal": PRICING["conveyor"]})
                 breakdown.append({"Component": "Hypervision Scanners", "Description": "2D + 3D", "Unit Price": PRICING["hypervision_scanner"], "Qty": inputs["hypervision_scanners"], "Subtotal": PRICING["hypervision_scanner"] * inputs["hypervision_scanners"]})
-                if inputs["ai_training"]: breakdown.append({"Component": "AI Training", "Unit Price": PRICING["ai_training"], "Qty": 1, "Subtotal": PRICING["ai_training"]})
-                if inputs["software_license"]: breakdown.append({"Component": "Software License", "Unit Price": PRICING["software_license"], "Qty": 1, "Subtotal": PRICING["software_license"]})
-                if inputs["fat"]: breakdown.append({"Component": "FAT", "Unit Price": PRICING["fat"], "Qty": 1, "Subtotal": PRICING["fat"]})
-                if inputs["try_and_buy"]: breakdown.append({"Component": "Try & Buy", "Unit Price": PRICING["try_and_buy_arm"], "Qty": 1, "Subtotal": PRICING["try_and_buy_arm"]})
-                if inputs["installation_by_wr"] == "Yes": breakdown.append({"Component": "Installation", "Unit Price": PRICING["installation"], "Qty": 1, "Subtotal": PRICING["installation"]})
+                if inputs["ai_training"]: breakdown.append({"Component": "AI Training", "Description": "", "Unit Price": PRICING["ai_training"], "Qty": 1, "Subtotal": PRICING["ai_training"]})
+                if inputs["software_license"]: breakdown.append({"Component": "Software License", "Description": "Perpetual", "Unit Price": PRICING["software_license"], "Qty": 1, "Subtotal": PRICING["software_license"]})
+                if inputs["fat"]: breakdown.append({"Component": "FAT", "Description": "", "Unit Price": PRICING["fat"], "Qty": 1, "Subtotal": PRICING["fat"]})
+                if inputs["try_and_buy"]: breakdown.append({"Component": "Try & Buy", "Description": "", "Unit Price": PRICING["try_and_buy_arm"], "Qty": 1, "Subtotal": PRICING["try_and_buy_arm"]})
+                if inputs["installation_by_wr"] == "Yes": breakdown.append({"Component": "Installation", "Description": "", "Unit Price": PRICING["installation"], "Qty": 1, "Subtotal": PRICING["installation"]})
                 try:
                     km = float(inputs["shipping_distance"])
                     breakdown.append({"Component": "Shipping", "Description": f"{km} km", "Unit Price": PRICING["shipping_per_km"], "Qty": km, "Subtotal": km * PRICING["shipping_per_km"]})
                 except: pass
                 mod_key = f"modification_{inputs['modification_scale'].lower()}"
                 breakdown.append({"Component": "Modification Scope", "Description": inputs["modification_scale"], "Unit Price": PRICING[mod_key], "Qty": 1, "Subtotal": PRICING[mod_key]})
-                if inputs["security_perimeter"]: breakdown.append({"Component": "Security Perimeter", "Unit Price": PRICING["security_perimeter"], "Qty": 1, "Subtotal": PRICING["security_perimeter"]})
-                if inputs["warranty"]: breakdown.append({"Component": "Warranty", "Unit Price": PRICING["warranty"], "Qty": 1, "Subtotal": PRICING["warranty"]})
-                if inputs["pe_stamp"]: breakdown.append({"Component": "PE Stamp", "Unit Price": PRICING["pe_stamp"], "Qty": 1, "Subtotal": PRICING["pe_stamp"]})
-                if inputs["sat"]: breakdown.append({"Component": "SAT", "Unit Price": PRICING["sat"], "Qty": 1, "Subtotal": PRICING["sat"]})
+                if inputs["security_perimeter"]: breakdown.append({"Component": "Security Perimeter", "Description": "", "Unit Price": PRICING["security_perimeter"], "Qty": 1, "Subtotal": PRICING["security_perimeter"]})
+                if inputs["warranty"]: breakdown.append({"Component": "Warranty", "Description": "", "Unit Price": PRICING["warranty"], "Qty": 1, "Subtotal": PRICING["warranty"]})
+                if inputs["pe_stamp"]: breakdown.append({"Component": "PE Stamp", "Description": "", "Unit Price": PRICING["pe_stamp"], "Qty": 1, "Subtotal": PRICING["pe_stamp"]})
+                if inputs["sat"]: breakdown.append({"Component": "SAT", "Description": "", "Unit Price": PRICING["sat"], "Qty": 1, "Subtotal": PRICING["sat"]})
                 return breakdown
 
             df = pd.DataFrame(calculate_price_breakdown(fd))
             multiplier = CURRENCY_CONVERSION.get(fd["currency"], 1.0)
             df["Unit Price"] *= multiplier
             df["Subtotal"] *= multiplier
-
             total = df["Subtotal"].sum()
-            st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
 
             context = {
                 **fd,
@@ -621,16 +718,24 @@ elif step == 4:
                 "gripper_type": ", ".join(fd["gripper_type"]),
                 "quote_date": fd["quote_date"].strftime("%B %d, %Y"),
                 "layout_image": layout_image,
-                "gripper_image": gripper_image,
                 "layout_overview_image": layout_overview_image,
                 "robot_model_image": robot_model_image,
-                "total_price": f"{fd['currency']} {total:,.0f}",
-                "additional_arm_price": f"{fd['currency']} {PRICING['try_and_buy_arm'] * multiplier:,.0f}"
+                "gripper_image": gripper_image,
+                "additional_arm_price": f"{fd['currency']} {PRICING['try_and_buy_arm'] * multiplier:,.0f}",
+                "total_price": f"{fd['currency']} {total:,.0f}"
             }
 
+            st.dataframe
+                        # Show Table and Total
+            st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
+            st.markdown(f"### **Total Estimated Price: {fd['currency']} {total:,.0f}**")
+
+            # Render and save DOCX
             doc.render(context)
-            file_name = f"{fd['client_name']}_Quote_{fd['quote_date'].strftime('%Y%m%d')}.docx"
+            file_name = f"{fd['client_name']}_Quote_{fd['quote_date'].replace(',', '').replace(' ', '_')}.docx"
             doc.save(file_name)
+
+            st.success("✅ Quote generated successfully!")
 
             with open(file_name, "rb") as f:
                 st.download_button(
@@ -639,14 +744,6 @@ elif step == 4:
                     file_name=file_name,
                     mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                 )
-
-            st.success("✅ Quote generated and ready to download!")
-
         except Exception as e:
-            st.error(f"Error generating quote: {e}")
+            st.error(f"Something went wrong during quote generation: {e}")
 
-st.markdown("""
-    <div class="footer">
-        © 2025 Waste Robotics | Internal Tool
-    </div>
-""", unsafe_allow_html=True)
