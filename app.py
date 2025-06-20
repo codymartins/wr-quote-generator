@@ -148,6 +148,63 @@ with tab5:
 
     if st.button("Generate Quote"):
         # ----- PRICE BREAKDOWN -----
+        # --- Input Validation ---
+        missing_fields = []
+
+        # Proposal Info
+        if not value_proposition.strip():
+            missing_fields.append("Value Proposition")
+        if not client_name.strip():
+            missing_fields.append("Client Name")
+        if not client_company.strip():
+            missing_fields.append("Client Company Name")
+        if not salesman_name.strip():
+            missing_fields.append("Salesperson Name")
+        if not site_location.strip():
+            missing_fields.append("Site Location")
+        if not application_overview.strip():
+            missing_fields.append("Application Overview")
+
+        # System Config
+        if not materials:
+            missing_fields.append("Materials to Sort")
+        if conveyor_included == "Yes" and not conveyor_size.strip():
+            missing_fields.append("Conveyor Size")
+        if not belt_speed.strip():
+            missing_fields.append("Belt Speed")
+        if not pick_rate.strip():
+            missing_fields.append("Pick Rate")
+        if not robot_type:
+            missing_fields.append("Robot Type")
+        if not gripper_type:
+            missing_fields.append("Gripper Type")
+
+        # Technical Specs
+        if max_object_weight == 0.0:
+            missing_fields.append("Max Object Weight")
+        if robot_bases == 0:
+            missing_fields.append("Number of Robot Bases")
+        if not vision_system:
+            missing_fields.append("Vision System")
+        if input_power_kva == 0.0:
+            missing_fields.append("Input Power")
+        if avg_consumption_kw == 0.0:
+            missing_fields.append("Average Power Consumption")
+        if air_consumption_lpm == 0:
+            missing_fields.append("Air Consumption")
+
+        # Shipping & Timeline
+        if not shipping_distance.strip():
+            missing_fields.append("Shipping Distance")
+        for step, duration in timeline.items():
+            if not duration.strip():
+                missing_fields.append(f"Timeline: {step}")
+
+        # Show error and stop if any fields are missing
+        if missing_fields:
+            st.error("Please fill in all required fields:\n- " + "\n- ".join(missing_fields))
+            st.stop()
+
         def calculate_price_breakdown(inputs):
             breakdown = []
             breakdown.append({
