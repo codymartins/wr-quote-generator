@@ -1,7 +1,7 @@
 item,price_usd
 robot_arm,45000
 gripper,6000
-conveyer,8000
+conveyor,8000
 hypervision_scanner,12000
 ai_training,15000
 software_license,5000
