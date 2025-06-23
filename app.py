@@ -56,29 +56,51 @@ st.markdown("""
     </style>
     """, unsafe_allow_html=True)
 
+# Load pricing data
+pricing_df = pd.read_csv("pricing.csv")
 
+# Convert it to a dictionary for easy lookup
+PRICING = dict(zip(pricing_df["item"], pricing_df["price_usd"]))
+
+robot_price = PRICING["robot_arm"]
+gripper_price = PRICING["gripper"]
+conveyor_price = PRICING["conveyor"]
+hypervision_scanner_price = PRICING["hypervision_scanner"]
+ai_training_price = PRICING["ai_training"]
+software_license_price = PRICING["software_license"]
+fat_price = PRICING["fat"]
+try_and_buy_arm_price = PRICING["try_and_buy_arm"]
+installation_price = PRICING["installation"]
+shipping_per_km_price = PRICING["shipping_per_km"]
+modification_small_price = PRICING['modification_small']
+modification_medium_price = PRICING['modification_medium']
+modification_large_price = PRICING['modification_large']
+security_perimeter_price = PRICING['security_perimeter']
+warranty_price = PRICING['warranty']
+pe_stamp_price = PRICING['pe_stamp']
+sat_price = PRICING['sat']
 
 # --- Constants ---
 CURRENCY_CONVERSION = {"USD": 1.0, "CAD": 1.36, "EUR": 0.92}
-PRICING = {
-    "robot_arm": 45000,
-    "gripper": 6000,
-    "conveyor": 8000,
-    "hypervision_scanner": 12000,
-    "ai_training": 15000,
-    "software_license": 5000,
-    "fat": 4000,
-    "try_and_buy_arm": 90000,
-    "installation": 30000,
-    "shipping_per_km": 3.5,
-    "modification_small": 5000,
-    "modification_medium": 15000,
-    "modification_large": 30000,
-    "security_perimeter": 2500,
-    "warranty": 8000,
-    "pe_stamp": 2000,
-    "sat": 6000
-}
+# PRICING = {
+#     "robot_arm": 45000,
+#     "gripper": 6000,
+#     "conveyor": 8000,
+#     "hypervision_scanner": 12000,
+#     "ai_training": 15000,
+#     "software_license": 5000,
+#     "fat": 4000,
+#     "try_and_buy_arm": 90000,
+#     "installation": 30000,
+#     "shipping_per_km": 3.5,
+#     "modification_small": 5000,
+#     "modification_medium": 15000,
+#     "modification_large": 30000,
+#     "security_perimeter": 2500,
+#     "warranty": 8000,
+#     "pe_stamp": 2000,
+#     "sat": 6000
+# }
 
 # --- UI ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([

@@ -1,0 +1,18 @@
+item ,price_usd
+robot_arm,45000
+gripper,6000
+conveyer,8000
+hypervision_scanner,12000
+ai_training,15000
+software_license,5000
+fat,4000
+try_and_buy_arm,90000
+installation,30000
+shipping_per_km,3.5
+modification_small,5000
+modification_medium,15000
+modification_large,30000
+security_perimeter,2500
+warranty,8000
+pe_stamp,2000
+sat,6000
