@@ -123,27 +123,41 @@ with tab1:
     currency = st.selectbox("Currency", ["USD", "CAD", "EUR"])
     application_overview = st.text_area("Brief Summary of the Application")
 
+
 with tab2:
     st.header("System Configuration")
     st.progress(40, text="Step 2 of 5")
     materials = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"])
     try_and_buy = st.checkbox("Include Try & Buy Option?")
     conveyor_included = st.selectbox("Conveyor Provided?", ["Yes", "No"])
-    conveyor_size = st.text_input("Conveyor Size (inches)", disabled=(conveyor_included == "No"))
+    conveyor_size = st.text_input("Conveyor Size (inches)", disabled=(conveyor_included == "Yes"))
     belt_speed = st.text_input("Belt Speed (e.g. 80 ft/min)")
     pick_rate = st.text_input("Pick Rate (e.g. 35 picks/minute)")
     modification_scale = st.selectbox("Modification Scope", ["Small", "Medium", "Large"])
     hypervision_scanners = st.number_input("Number of Hypervision Scanners", min_value=0, value=1)
-    robot_type = st.selectbox("Robot Type", ["Fanuc LR-Mate 200ID", "Other"])
+    robot_type = st.selectbox("Robot Type", ["Fanuc LR-Mate", "FanucLr10iA", "Fanuc Delta DR3", "Fanuc M10", "Fanuc M20", "Fanuc M710"])
     robot_arms = st.slider("Number of Robot Arms", 1, 3, 2)
-    gripper_type = st.multiselect("Gripper Type", ["VentuR (suction)", "PinchR", "Other"])
+    gripper_types_list = ["VentuR", "BagR", "BagR CO", "PinchR Lr & M10", "MonstR", "DagR"]
+    selected_grippers = st.multiselect("Gripper Types", gripper_types_list)
+    gripper_type = {}
+    for gtype in selected_grippers:
+        qty = st.number_input(f"Quantity of {gtype}", min_value=0, value=1, key=f"qty_gripper_{gtype}")
+        if qty > 0:
+            gripper_type[gtype] = qty
+
 
 with tab3:
     st.header("Technical Specs")
     st.progress(60, text="Step 3 of 5")
     max_object_weight = st.number_input("Maximum Object Weight per Robot (kg)", min_value=0.0)
-    robot_bases = st.number_input("Number of Robot Bases", min_value=0)
-    vision_system = st.multiselect("Robot Vision System", ["RGB Camera", "3D Camera"])
+    base_types = ["LrMate/Lr10ia", "Delta DR3", "M-10, M-20, M-710"]
+    selected_bases = st.multiselect("Robot Base Types", base_types)
+    robot_bases = {}
+    for base in selected_bases:
+        qty = st.number_input(f"Quantity of {base}", min_value=0, value=1, key=f"qty_{base}")
+        if qty > 0:
+            robot_bases[base] = qty
+    vision_system = st.multiselect("Robot Vision System", ["DeepVision System", "HyperVision System"])
     input_power_kva = st.number_input("Input Power (kVA)", min_value=0.0)
     avg_consumption_kw = st.number_input("Average Power Consumption (kW)", min_value=0.0)
     air_consumption_lpm = st.number_input("Total Air Consumption (L/min)", min_value=0)
@@ -434,7 +448,7 @@ with tab5:
             "belt_speed": belt_speed,
             "pick_rate": pick_rate,
             "max_object_weight": max_object_weight,
-            "robot_bases": robot_bases,
+            "robot_bases": sum(robot_bases.values()) if isinstance(robot_bases, dict) else robot_bases,
             "vision_system": ", ".join(vision_system),
             "input_power_kva": input_power_kva,
             "avg_consumption_kw": avg_consumption_kw,
