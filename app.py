@@ -726,19 +726,24 @@ with tab5:
         }
         
 
-        file_name = f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.docx"
+        import tempfile
+
         doc.render(context)
-        doc.save(file_name)
+
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
+            temp_file_path = tmp.name
+            doc.save(temp_file_path)
 
         st.success("✅ Quote generated successfully!")
 
-        with open(file_name, "rb") as f:
+        with open(temp_file_path, "rb") as f:
             st.download_button(
                 label="📄 Download Quote DOCX",
                 data=f,
-                file_name=file_name,
+                file_name=f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.docx",
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
+
 
 st.markdown("""
     <div class="footer" style='
