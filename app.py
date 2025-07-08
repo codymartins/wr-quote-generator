@@ -10,6 +10,7 @@ from docx.shared import Mm
 import os
 import matplotlib.pyplot as plt
 import tempfile
+from io import BytesIO
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
@@ -48,12 +49,11 @@ def save_df_as_image(df, currency="CAD"):
 
     fig.tight_layout()
 
-    # ✅ This creates a reliable path in all environments
-    fd, img_path = tempfile.mkstemp(suffix=".png")
-    os.close(fd)  # close file handle, only need path
-    plt.savefig(img_path, dpi=300, bbox_inches="tight")
+    buf = BytesIO()
+    plt.savefig(buf, format="png", dpi=300, bbox_inches="tight")
     plt.close(fig)
-    return img_path
+    buf.seek(0)
+    return buf
 
 
 st.markdown("""
@@ -672,12 +672,9 @@ with tab5:
         else:
             gripper_images = [InlineImage(doc, "gripper_default.png", width=Mm(100), height=Mm(80))]
 
-        # Save the price breakdown DataFrame as an image
-        save_df_as_image(df, "price_table.png")
 
-        # Create InlineImage for docxtpl
-        image_path = save_df_as_image(df, currency=currency)
-        price_table_img = InlineImage(doc, image_path, width=Mm(160))
+        # Create InlineImage for docxtpl using in-memory BytesIO
+        price_table_img = InlineImage(doc, save_df_as_image(df, currency=currency), width=Mm(160))
 
         context = {
             "value_proposition": value_proposition,
