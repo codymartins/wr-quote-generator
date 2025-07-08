@@ -9,6 +9,7 @@ from docxtpl import DocxTemplate, InlineImage
 from docx.shared import Mm
 import os
 import matplotlib.pyplot as plt
+import tempfile
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
@@ -19,19 +20,14 @@ with col2:
     st.markdown("<h1 style='color: white;'>Waste Robotics Quote Generator</h1>", unsafe_allow_html=True)
     st.markdown("<p style='color: #EF3A2D; font-style: italic;'>Smarter Sorting with Robotics</p>", unsafe_allow_html=True)
 
-def save_df_as_image(df, filename="price_table.png", currency="CAD"):
-    import matplotlib.pyplot as plt
-
-    # Format currency columns
+def save_df_as_image(df, currency="CAD"):
     df = df.copy()
     df["Unit Price"] = df["Unit Price"].map(lambda x: f"{currency} {x:,.0f}")
     df["Subtotal"] = df["Subtotal"].map(lambda x: f"{currency} {x:,.0f}")
 
-    # Create figure and axis
     fig, ax = plt.subplots(figsize=(10, len(df) * 0.5 + 1))
     ax.axis("off")
 
-    # Create table
     table = ax.table(
         cellText=df.values,
         colLabels=df.columns,
@@ -41,28 +37,23 @@ def save_df_as_image(df, filename="price_table.png", currency="CAD"):
     table.auto_set_font_size(False)
     table.set_fontsize(10)
 
-    # Column widths (adjust manually if needed)
-    col_widths = [0.15, 0.35, 0.15, 0.1, 0.15]
-    for i, width in enumerate(col_widths):
-        for j in range(len(df) + 1):  # includes header
-            cell = table[j, i]
-            cell.set_width(width)
-
-    # Header formatting
     for i in range(len(df.columns)):
-        cell = table[0, i]
-        cell.set_facecolor("#ef3a2d")  # Waste Robotics red
-        cell.set_text_props(weight="bold", color="white")
+        table[0, i].set_facecolor("#ef3a2d")
+        table[0, i].set_text_props(weight="bold", color="white")
 
-    # Alternate row colors
     for row_idx in range(1, len(df) + 1):
         color = "#f2f2f2" if row_idx % 2 == 0 else "#ffffff"
         for col_idx in range(len(df.columns)):
             table[row_idx, col_idx].set_facecolor(color)
 
     fig.tight_layout()
-    plt.savefig(filename, dpi=300, bbox_inches="tight")
+
+    # ✅ This creates a reliable path in all environments
+    fd, img_path = tempfile.mkstemp(suffix=".png")
+    os.close(fd)  # close file handle, only need path
+    plt.savefig(img_path, dpi=300, bbox_inches="tight")
     plt.close(fig)
+    return img_path
 
 
 st.markdown("""
@@ -685,7 +676,8 @@ with tab5:
         save_df_as_image(df, "price_table.png")
 
         # Create InlineImage for docxtpl
-        price_table_img = InlineImage(doc, "price_table.png", width=Mm(160))  # adjust width if needed
+        image_path = save_df_as_image(df, currency=currency)
+        price_table_img = InlineImage(doc, image_path, width=Mm(160))
 
         context = {
             "value_proposition": value_proposition,
