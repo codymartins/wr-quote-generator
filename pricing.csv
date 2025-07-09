@@ -5,7 +5,7 @@ robot_validator_license,31610
 GreyParrot_Monitoring_Unit,47105
 try_and_buy_arm,90000
 installation_Supervision,9317
-shipping_per_km,3.5
+shipping_truck,8250
 modification_small,5000
 modification_medium,15000
 modification_large,30000
@@ -35,3 +35,4 @@ Engineering_&_Documentation,37642
 Online_Commisioning,12760
 Installation_Commisioning_&_Training,25520
 LIPS2_support,"26,605"
+shipping_boat_container,11000

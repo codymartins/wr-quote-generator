@@ -145,6 +145,11 @@ with tab1:
     client_company = st.text_input("Client Company Name")
     salesman_name = st.text_input("Salesperson Name")
     site_location = st.text_input("Site Location")
+    shipping_method = st.selectbox("Shipping Method", ["Truck", "Boat"], help="Select the shipping method for delivery.")
+    if shipping_method == "Truck":
+        num_trucks_or_containers = st.number_input("Number of Trucks", min_value=1, value=1, step=1)
+    else:
+        num_trucks_or_containers = st.number_input("Number of Containers (Boat)", min_value=1, value=1, step=1)
     currency = st.selectbox("Currency", ["USD", "CAD", "EUR"])
     application_overview = st.text_area("Brief Summary of the Application")
 
@@ -214,7 +219,8 @@ with tab3:
 with tab4:
     st.header("Shipping & Timeline")
     st.progress(80, text="Step 4 of 5")
-    shipping_distance = st.text_input("Estimated Shipping Distance (miles or km)")
+    # shipping_distance = st.text_input("Estimated Shipping Distance (miles or km)")
+    # Shipping distance is now replaced by method/count logic
     order_confirmation_project_kickoff = st.text_input("Order Confirmation / Project Kickoff Duration")
     detailed_engineering = st.text_input("Detailed Engineering Duration")
     engineering_review = st.text_input("Engineering Review Duration")
@@ -294,8 +300,13 @@ with tab5:
 
 
         # Shipping & Timeline
-        if not shipping_distance.strip():
-            missing_fields.append("Shipping Distance")
+        # Shipping method/count validation
+        if not site_location.strip():
+            missing_fields.append("Site Location")
+        if not shipping_method:
+            missing_fields.append("Shipping Method")
+        if not num_trucks_or_containers or num_trucks_or_containers < 1:
+            missing_fields.append("Number of Trucks/Containers")
         if not order_confirmation_project_kickoff.strip():
             missing_fields.append("Order Confirmation / Project Kickoff Duration")
         if not detailed_engineering.strip():
@@ -532,18 +543,23 @@ with tab5:
                 })
 
 
-            try:
-                dist = float(inputs["shipping_distance"])
-                shipping_cost = dist * PRICING.get("shipping_per_km", 0)
-                breakdown.append({
-                    "Component": "Shipping",
-                    "Description": f"{dist} km at ${PRICING.get('shipping_per_km', 0)}/km",
-                    "Unit Price": PRICING.get("shipping_per_km", 0),
-                    "Qty": dist,
-                    "Subtotal": shipping_cost
-                })
-            except:
-                pass
+            # Shipping logic: by truck or by boat (container)
+            shipping_method = inputs.get("shipping_method", "Truck")
+            num_units = int(inputs.get("num_trucks_or_containers", 1))
+            if shipping_method == "Truck":
+                unit_price = PRICING.get("shipping_truck", 8250)
+                desc = f"{num_units} truck(s) at ${unit_price:,.0f}/truck"
+            else:
+                unit_price = PRICING.get("shipping_boat_container", 11000)
+                desc = f"{num_units} container(s) at ${unit_price:,.0f}/container (boat)"
+            shipping_cost = unit_price * num_units
+            breakdown.append({
+                "Component": "Shipping",
+                "Description": desc,
+                "Unit Price": unit_price,
+                "Qty": num_units,
+                "Subtotal": shipping_cost
+            })
 
 
 
@@ -601,7 +617,8 @@ with tab5:
             "try_and_buy": try_and_buy,
             "robot_type": robot_type,
             "robot_bases": robot_bases,
-            "shipping_distance": shipping_distance,
+            "shipping_method": shipping_method,
+            "num_trucks_or_containers": num_trucks_or_containers,
             "safety_fencing": safety_fencing,
             "warranty_option": warranty_option,
             "vision_system": vision_system,
