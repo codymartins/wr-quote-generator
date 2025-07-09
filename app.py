@@ -154,11 +154,8 @@ with tab2:
     st.progress(40, text="Step 2 of 5")
     materials = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"])
     try_and_buy = st.checkbox("Include Try & Buy Option?")
-    conveyor_included = st.selectbox("Conveyor Provided?", ["Yes", "No"])
-    conveyor_size = st.text_input("Conveyor Size (inches)", disabled=(conveyor_included == "Yes"))
     belt_speed = st.text_input("Belt Speed (e.g. 80 ft/min)")
     pick_rate = st.text_input("Pick Rate (e.g. 35 picks/minute)")
-    modification_scale = st.selectbox("Modification Scope", ["Small", "Medium", "Large"])
     # Robot Arms (type and quantity)
     robot_types_list = ["Fanuc LR-Mate", "FanucLr10iA", "Fanuc Delta DR3", "Fanuc M10", "Fanuc M20", "Fanuc M710"]
     selected_robot_types = st.multiselect("Robot Arm Types", robot_types_list)
@@ -272,8 +269,6 @@ with tab5:
         # System Config
         if not materials:
             missing_fields.append("Materials to Sort")
-        if conveyor_included == "Yes" and not conveyor_size.strip():
-            missing_fields.append("Conveyor Size")
         if not belt_speed.strip():
             missing_fields.append("Belt Speed")
         if not pick_rate.strip():
@@ -550,14 +545,7 @@ with tab5:
             except:
                 pass
 
-            mod_key = f"modification_{inputs['modification_scale'].lower()}"
-            breakdown.append({
-                "Component": "Modification Scope",
-                "Description": inputs["modification_scale"],
-                "Unit Price": PRICING.get(mod_key, 0),
-                "Qty": 1,
-                "Subtotal": PRICING.get(mod_key, 0)
-            })
+
 
             if inputs.get("safety_fencing"):
                 breakdown.append({
@@ -610,13 +598,10 @@ with tab5:
         inputs = {
             "robot_arms": total_arms,
             "gripper_type": gripper_type,
-            "conveyor_included": conveyor_included,
-            "conveyor_size": conveyor_size,
             "try_and_buy": try_and_buy,
             "robot_type": robot_type,
             "robot_bases": robot_bases,
             "shipping_distance": shipping_distance,
-            "modification_scale": modification_scale,
             "safety_fencing": safety_fencing,
             "warranty_option": warranty_option,
             "vision_system": vision_system,
