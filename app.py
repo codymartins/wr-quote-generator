@@ -658,36 +658,58 @@ with tab5:
         else:
             robot_arm_images = [InlineImage(doc, "robot_default.png", width=Mm(100), height=Mm(80))]
 
-        # Layout image logic
+        # --- Build Configuration ID for Image Lookup ---
         def sanitize(s):
-            return str(s).lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
+            return (str(s).strip()
+                    .lower()
+                    .replace(" ", "_")
+                    .replace("&", "and")
+                    .replace(",", "")
+                    .replace("-", "_")
+                    .replace("/", ""))   # ✅ removes slashes
+
 
         num_arms = inputs["robot_arms"]
+
         robot_type_str = "_".join([sanitize(rt) for rt in robot_type.keys()]) if isinstance(robot_type, dict) else sanitize(robot_type)
         disposition_str = sanitize(disposition)
         vrs_model_str = sanitize(vrs_model)
         gripper_type_str = "_".join([sanitize(gt) for gt in gripper_type.keys()]) if isinstance(gripper_type, dict) else sanitize(gripper_type)
 
         config_id = f"{num_arms}arms_{robot_type_str}_{disposition_str}_{vrs_model_str}_{gripper_type_str}"
-        assets_folder = f"Assets/{config_id}"
 
-        # ISO view for layout_image
+        # ✅ Force absolute path for Assets
+        base_assets_path = os.path.abspath("Assets")
+        assets_folder = os.path.join(base_assets_path, config_id)
+
+        st.write(f"🔍 Looking for config folder: {assets_folder}")  # ✅ Debugging
+
+        # --- Validate the folder ---
+        if not os.path.isdir(assets_folder):
+            st.warning(f"⚠️ Config folder '{config_id}' not found, using default images.")
+            assets_folder = base_assets_path  # fallback to root
+
+        # --- ISO Image ---
         iso_path = os.path.join(assets_folder, "iso.png")
         if not os.path.exists(iso_path):
+            st.warning(f"⚠️ Missing iso.png for {config_id}, using default.")
             iso_path = "robot_default.png"
         layout_image = InlineImage(doc, iso_path, width=Mm(100), height=Mm(80))
 
-        # Top and Front views for layout_overview_image
+        # --- Top & Front Images ---
         top_path = os.path.join(assets_folder, "top.png")
         if not os.path.exists(top_path):
+            st.warning(f"⚠️ Missing top.png for {config_id}, using default.")
             top_path = "robot_default.png"
+
         front_path = os.path.join(assets_folder, "front.png")
         if not os.path.exists(front_path):
+            st.warning(f"⚠️ Missing front.png for {config_id}, using default.")
             front_path = "robot_default.png"
-        layout_overview_images = [
-            InlineImage(doc, top_path, width=Mm(150), height=Mm(80)),
-            InlineImage(doc, front_path, width=Mm(150), height=Mm(80))
-        ]
+
+        layout_overview_top = InlineImage(doc, top_path, width=Mm(150), height=Mm(80))
+        layout_overview_front = InlineImage(doc, front_path, width=Mm(150), height=Mm(80))
+
 
         if gripper_type:
             gripper_images = []
@@ -730,7 +752,6 @@ with tab5:
             "layout_image": layout_image,
             "gripper_images": gripper_images,
             "robot_arm_images": robot_arm_images,
-            "layout_overview_images": layout_overview_images,
             "order_confirmation_project_kickoff": order_confirmation_project_kickoff,
             "detailed_engineering": detailed_engineering,
             "engineering_review": engineering_review,
@@ -739,7 +760,8 @@ with tab5:
             "retrofit_installation": retrofit_installation,
             "commissioning_and_SAT": commissioning_and_SAT,
             "price_table_img": price_table_img,
-            #"robot_model_image": robot_model_image
+            "layout_overview_top": layout_overview_top,
+            "layout_overview_front": layout_overview_front,
         }
         
 
