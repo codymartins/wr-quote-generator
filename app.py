@@ -11,6 +11,9 @@ import os
 import matplotlib.pyplot as plt
 import tempfile
 from io import BytesIO
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
@@ -107,25 +110,7 @@ PRICING = {
 # --- Constants ---
 # All prices in CSV are in CAD, so CAD is the base currency
 CURRENCY_CONVERSION = {"CAD": 1.0, "USD": 0.74, "EUR": 0.68}
-# PRICING = {
-#     "robot_arm": 45000,
-#     "gripper": 6000,
-#     "conveyor": 8000,
-#     "hypervision_scanner": 12000,
-#     "ai_training": 15000,
-#     "software_license": 5000,l
-#     "fat": 4000,
-#     "try_and_buy_arm": 90000,
-#     "installation": 30000,
-#     "shipping_per_km": 3.5,
-#     "modification_small": 5000,
-#     "modification_medium": 15000,
-#     "modification_large": 30000,
-#     "security_perimeter": 2500,
-#     "warranty": 8000,
-#     "pe_stamp": 2000,
-#     "sat": 6000
-# }
+
 
 # --- UI ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -763,7 +748,8 @@ with tab5:
             "layout_overview_top": layout_overview_top,
             "layout_overview_front": layout_overview_front,
         }
-        
+
+
 
         import tempfile
 
@@ -783,7 +769,373 @@ with tab5:
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
+        # --- PowerPoint Generation ---
+        prs = Presentation()
+        slide_width = prs.slide_width
+        slide_height = prs.slide_height
+        
+        # Branding colors
+        BRAND_RED = RGBColor(239, 58, 45)   # #EF3A2D
+        BRAND_DARK = RGBColor(15, 15, 15)   # #0F0F0F
 
+        def add_branding(slide):
+            # Set background color
+            fill = slide.background.fill
+            fill.solid()
+            fill.fore_color.rgb = BRAND_DARK
+
+            # Add logo (top left)
+            slide.shapes.add_picture("logoWasteRobotics(1).png", Inches(0.2), Inches(0.2), width=Inches(1.5))
+
+        # Always use the blank layout for new slides
+        blank_layout = prs.slide_layouts[-1]  # This is usually the blank slide
+
+        left = Inches(1)
+        top = Inches(1.2)
+        width = Inches(8)
+        height = Inches(1.2)
+
+        # --- Title Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Place the image so its left edge is at the center of the slide
+        bg_img_path = "title_background.png"
+        if os.path.exists(bg_img_path):
+            from PIL import Image as PILImage
+            img = PILImage.open(bg_img_path)
+            img_width, img_height = img.size
+            slide_px_height = int(slide_height / 9525)
+            # Scale image to fit slide height
+            scale = slide_px_height / img_height
+            new_width = int(img_width * scale)
+            new_height = slide_px_height
+            # Place so left edge aligns with center of slide
+            left = int(slide_width / 2)
+            top = 0
+            slide.shapes.add_picture(
+                bg_img_path,
+                left,
+                top,
+                width=new_width * 9525,
+                height=new_height * 9525
+            )
+
+        # Define the light blue color and font name
+        LIGHT_BLUE = RGBColor(46, 125, 122)  # #2e7d7a
+        FONT_NAME = "Arial"
+
+        # Title text on left half (never overlaps image)
+        left = Inches(0.25)
+        top = Inches(1.2)
+        width = Inches(4.5)
+        height = Inches(1.2)
+        title_shape = slide.shapes.add_textbox(left, top, width, height)
+        title_frame = title_shape.text_frame
+        title_frame.clear()
+        p = title_frame.add_paragraph()
+        p.text = f"Value Proposition: \n{value_proposition}"
+        p.font.size = Pt(30)
+        p.font.bold = False
+        p.font.color.rgb = LIGHT_BLUE
+        p.font.name = FONT_NAME
+
+        # Add a thin line above the info box
+        line_left = left
+        line_top = top + height + Inches(0.5)
+        line_width = width
+        line_height = Pt(2)
+        line_shape = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            line_left,
+            line_top,
+            line_width,
+            line_height
+        )
+        fill = line_shape.fill
+        fill.solid()
+        fill.fore_color.rgb = LIGHT_BLUE
+        line_shape.line.color.rgb = LIGHT_BLUE
+        line_shape.line.width = Pt(0)
+
+        # Info box below title (also only left half)
+        info_shape = slide.shapes.add_textbox(left, line_top + Inches(0.2), width, Inches(2.25))
+        info_frame = info_shape.text_frame
+        info_frame.clear()
+        p = info_frame.add_paragraph()
+        p.text = f"Presented to: {client_name}\nCompany: {client_company}\n\n\n\n\n\nDate: {quote_date.strftime('%B %d, %Y')}"
+        p.font.size = Pt(20)
+        p.font.color.rgb = LIGHT_BLUE
+        p.font.name = FONT_NAME
+
+        # --- Application Overview Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Colors and font
+        BLUE = RGBColor(46, 125, 122)  # #2e7d7a
+        WHITE = RGBColor(255, 255, 255)
+        FONT_NAME = "Arial"
+
+        # Heading: Application Overview
+        heading_left = Inches(0.7)
+        heading_top = Inches(1.0)
+        heading_width = Inches(7)
+        heading_height = Inches(0.8)
+        heading_shape = slide.shapes.add_textbox(heading_left, heading_top, heading_width, heading_height)
+        heading_frame = heading_shape.text_frame
+        heading_frame.clear()
+        p = heading_frame.add_paragraph()
+        p.text = "Application Overview"
+        p.font.size = Pt(32)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        # Overview text (white)
+        overview_left = heading_left
+        overview_top = heading_top + heading_height + Inches(0.1)
+        overview_width = Inches(7)
+        overview_height = Inches(1.2)
+        overview_shape = slide.shapes.add_textbox(overview_left, overview_top, overview_width, overview_height)
+        overview_frame = overview_shape.text_frame
+        overview_frame.clear()
+        p = overview_frame.add_paragraph()
+        p.text = application_overview
+        p.font.size = Pt(20)
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+
+        # "Preliminary layout design (#arm-system)" section
+        layout_label_left = heading_left
+        layout_label_top = overview_top + overview_height + Inches(0.2)
+        layout_label_width = Inches(7)
+        layout_label_height = Inches(0.5)
+        layout_label_shape = slide.shapes.add_textbox(layout_label_left, layout_label_top, layout_label_width, layout_label_height)
+        layout_label_frame = layout_label_shape.text_frame
+        layout_label_frame.clear()
+        p = layout_label_frame.add_paragraph()
+        p.text = f"Preliminary layout design ({inputs['robot_arms']}-arm system)"
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        # ISO image centered below the label
+        iso_img_top = layout_label_top + layout_label_height + Inches(0.4)
+        iso_img_width = Inches(5)
+        iso_img_height = Inches(3)
+        iso_img_left = heading_left 
+
+        slide.shapes.add_picture(
+            iso_path,
+            iso_img_left,
+            iso_img_top,
+            width=iso_img_width,
+            height=iso_img_height
+        )
+
+        # --- Layout Images Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Title: Layout Overview (#arms-system)
+        layout_title = f"Layout Overview ({inputs['robot_arms']}-arm system)"
+        title_left = Inches(0.7)
+        title_top = Inches(1.0)
+        title_width = Inches(7)
+        title_height = Inches(0.8)
+        title_shape = slide.shapes.add_textbox(title_left, title_top, title_width, title_height)
+        title_frame = title_shape.text_frame
+        title_frame.clear()
+        p = title_frame.add_paragraph()
+        p.text = layout_title
+        p.font.size = Pt(32)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(46, 125, 122)  # #2e7d7a
+        p.font.name = "Arial"
+
+        # Arrange images side by side, centered
+        img_width = Inches(4)
+        img_height = Inches(3)
+        spacing = Inches(0.5)
+        total_width = img_width * 2 + spacing
+        img_top = title_top + title_height + Inches(0.3)
+        img_left = (slide_width - (total_width)) // 2
+
+        # Top view image (left)
+        slide.shapes.add_picture(
+            top_path,
+            img_left,
+            img_top,
+            width=img_width,
+            height=img_height
+        )
+
+        # Front view image (right)
+        slide.shapes.add_picture(
+            front_path,
+            img_left + img_width + spacing,
+            img_top,
+            width=img_width,
+            height=img_height
+        )
+
+        # --- Robot Arm & Gripper Model Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Colors and font
+        BLUE = RGBColor(46, 125, 122)
+        FONT_NAME = "Arial"
+
+        # Left: Robot Arm Model
+        left_title_left = Inches(0.7)
+        left_title_top = Inches(1.0)
+        left_title_width = Inches(4)
+        left_title_height = Inches(0.5)
+        left_img_top = left_title_top + left_title_height + Inches(0.4)
+        left_img_width = Inches(3.5)
+        left_img_height = Inches(2.5)
+
+        # Robot Arm Title
+        left_title_shape = slide.shapes.add_textbox(left_title_left, left_title_top, left_title_width, left_title_height)
+        left_title_frame = left_title_shape.text_frame
+        left_title_frame.clear()
+        p = left_title_frame.add_paragraph()
+        p.text = "Robot Arm Model"
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        # Robot Arm Image (first one)
+        robot_arm_img_path = iso_path  # Or use your robot_arm_images list if you want a specific image
+        slide.shapes.add_picture(
+            robot_arm_img_path,
+            left_title_left,
+            left_img_top,
+            width=left_img_width,
+            height=left_img_height
+        )
+
+        # Right: Gripper Model
+        right_title_left = Inches(5)
+        right_title_top = Inches(1.0)
+        right_title_width = Inches(4)
+        right_title_height = Inches(0.5)
+        right_img_top = right_title_top + right_title_height + Inches(0.4)
+        right_img_width = Inches(3.5)
+        right_img_height = Inches(2.5)
+
+        # Gripper Title
+        gripper_type_str = ", ".join(gripper_type.keys()) if isinstance(gripper_type, dict) else str(gripper_type)
+        right_title_shape = slide.shapes.add_textbox(right_title_left, right_title_top, right_title_width, right_title_height)
+        right_title_frame = right_title_shape.text_frame
+        right_title_frame.clear()
+        p = right_title_frame.add_paragraph()
+        p.text = f"Gripper Model: {gripper_type_str}"
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        # Gripper Image (first one)
+        if gripper_images:
+            gripper_img_path = gripper_images[0].image_descriptor  # Use the first gripper image
+        else:
+            gripper_img_path = "gripper_default.png"
+        slide.shapes.add_picture(
+            gripper_img_path,
+            right_title_left,
+            right_img_top,
+            width=right_img_width,
+            height=right_img_height
+        )
+
+        # --- System Configuration Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+        slide.shapes.add_textbox(left, top, width, height).text_frame.text = "System Configuration"
+        config_text = (
+            f"Site Location: {site_location}\n"
+            f"Robot Type(s): {', '.join(robot_type.keys())}\n"
+            f"Robot Arms: {inputs['robot_arms']}\n"
+            f"Robot Bases: {sum(robot_bases.values()) if isinstance(robot_bases, dict) else robot_bases}\n"
+            f"Gripper Type(s): {', '.join(gripper_type.keys())}\n"
+            f"Vision System(s): {', '.join(vision_system.keys())}\n"
+            f"Materials: {', '.join(materials)}\n"
+            f"Belt Speed: {belt_speed}\n"
+            f"Pick Rate: {pick_rate}\n"
+            f"Max Object Weight: {max_object_weight}\n"
+            f"Input Power (kVA): {input_power_kva}\n"
+            f"Avg Power Consumption (kW): {avg_consumption_kw}\n"
+            f"Air Consumption (L/min): {air_consumption_lpm}\n"
+        )
+        slide.shapes.add_textbox(left, top + Inches(1.2), width, Inches(3)).text_frame.text = config_text
+
+        # --- Timeline Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+        slide.shapes.add_textbox(left, top, width, height).text_frame.text = "Timeline"
+        timeline_text = (
+            f"Order Confirmation / Project Kickoff: {order_confirmation_project_kickoff}\n"
+            f"Detailed Engineering: {detailed_engineering}\n"
+            f"Engineering Review: {engineering_review}\n"
+            f"Procurement & Fabrication: {procurement_fabrication}\n"
+            f"FAT & Shipping: {fat_shipping}\n"
+            f"Retrofit & Installation: {retrofit_installation}\n"
+            f"Commissioning & SAT: {commissioning_and_SAT}\n"
+        )
+        slide.shapes.add_textbox(left, top + Inches(1.2), width, Inches(3)).text_frame.text = timeline_text
+
+        # --- Gripper Images Slide (if any) ---
+        if gripper_images:
+            slide = prs.slides.add_slide(blank_layout)
+            add_branding(slide)
+            for shape in list(slide.shapes):
+                if shape.is_placeholder:
+                    slide.shapes._spTree.remove(shape._element)
+            slide.shapes.add_textbox(left, top, width, height).text_frame.text = "Gripper Images"
+            for idx, gimg in enumerate(gripper_images):
+                img_src = gimg.image_descriptor
+                slide.shapes.add_picture(img_src, Inches(0.5 + idx * 3), Inches(1.2), width=Inches(2.5))
+
+        # --- Download PPTX ---
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp:
+            pptx_file_path = tmp.name
+            prs.save(pptx_file_path)
+
+        st.success("✅ Quote PowerPoint generated successfully!")
+
+        with open(pptx_file_path, "rb") as f:
+            st.download_button(
+                label="📊 Download Quote PPTX",
+                data=f,
+                file_name=f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+
+
+# Footer branding (if needed)
 st.markdown("""
     <div class="footer" style='
         position: fixed;
