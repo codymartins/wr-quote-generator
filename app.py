@@ -694,13 +694,31 @@ with tab5:
                     .replace("-", "_")
                     .replace("/", ""))   # ✅ removes slashes
 
+        def get_existing_config_folder(num_arms, robot_type_str, disposition_str, vrs_model_str, gripper_types_list, base_assets_path):
+            """
+            Try to find a config folder with the same layout but any available gripper type.
+            Returns the folder path and the gripper type used.
+            """
+            for alt_gripper in gripper_types_list:
+                alt_gripper_str = sanitize(alt_gripper)
+                alt_config_id = f"{num_arms}arms_{robot_type_str}_{disposition_str}_{vrs_model_str}_{alt_gripper_str}"
+                alt_folder = os.path.join(base_assets_path, alt_config_id)
+                if os.path.isdir(alt_folder):
+                    return alt_folder, alt_gripper
+            return base_assets_path, None  # fallback to root
 
         num_arms = inputs["robot_arms"]
 
         robot_type_str = "_".join([sanitize(rt) for rt in robot_type.keys()]) if isinstance(robot_type, dict) else sanitize(robot_type)
         disposition_str = sanitize(disposition)
         vrs_model_str = sanitize(vrs_model)
-        gripper_type_str = "_".join([sanitize(gt) for gt in gripper_type.keys()]) if isinstance(gripper_type, dict) else sanitize(gripper_type)
+
+        # Only use the first gripper type for config_id and images
+        if isinstance(gripper_type, dict) and gripper_type:
+            first_gripper = next(iter(gripper_type.keys()))
+            gripper_type_str = sanitize(first_gripper)
+        else:
+            gripper_type_str = sanitize(gripper_type)
 
         config_id = f"{num_arms}arms_{robot_type_str}_{disposition_str}_{vrs_model_str}_{gripper_type_str}"
 
@@ -712,8 +730,17 @@ with tab5:
 
         # --- Validate the folder ---
         if not os.path.isdir(assets_folder):
-            st.warning(f"⚠️ Config folder '{config_id}' not found, using default images.")
-            assets_folder = base_assets_path  # fallback to root
+            st.warning(f"⚠️ Config folder '{config_id}' not found, searching for alternate gripper images.")
+            # Try to find another gripper type with the same layout
+            alt_folder, alt_gripper = get_existing_config_folder(
+                num_arms, robot_type_str, disposition_str, vrs_model_str, gripper_types_list, base_assets_path
+            )
+            if alt_folder != base_assets_path:
+                st.info(f"Using images from configuration with gripper '{alt_gripper}'.")
+                assets_folder = alt_folder
+            else:
+                st.warning("No alternate configuration images found, using default images.")
+                assets_folder = base_assets_path  # fallback to root
 
         # --- ISO Image ---
         iso_path = os.path.join(assets_folder, "iso.png")
