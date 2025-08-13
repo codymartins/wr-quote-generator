@@ -143,7 +143,7 @@ with tab1:
             f"Get the latest {currency}/CAD exchange rate from [xe.com](https://www.xe.com/currencyconverter/)."
         )
         user_rate = st.number_input(
-            f"Enter the current {currency}/CAD exchange rate", min_value=0.0001, value=0.74 if currency == "USD" else 0.68, format="%.4f"
+            f"Enter the current {currency}/CAD exchange rate", min_value=0.0001, value=0.00 if currency == "USD" else 0.00, format="%.4f"
         )
         multiplier = user_rate
     else:
