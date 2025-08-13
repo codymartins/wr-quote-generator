@@ -185,6 +185,13 @@ with tab2:
         if qty > 0:
             gripper_type[gtype] = qty
 
+    # Backup gripper option
+    add_backup_gripper = st.checkbox("Add a backup gripper?")
+    if add_backup_gripper:
+        backup_gripper = st.selectbox("Select backup gripper type", gripper_types_list, key="backup_gripper_type")
+    else:
+        backup_gripper = None
+
     # Consistency check
     total_arms = sum(robot_type.values()) if robot_type else 0
     total_bases = sum(robot_bases.values()) if robot_bases else 0
@@ -604,6 +611,26 @@ with tab5:
                     "Subtotal": PRICING.get("sat", 0)
                 })
 
+            # Add backup gripper if selected
+            if inputs.get("add_backup_gripper") and inputs.get("backup_gripper"):
+                gripper_key_map = {
+                    "VentuR": "VentuR",
+                    "BagR": "BagR",
+                    "BagR CO": "BagR_CO",
+                    "PinchR Lr & M10": "PinchR_Lr_&_M10",
+                    "MonstR": "MonstR",
+                    "DagR": "DagR"
+                }
+                backup_key = gripper_key_map.get(inputs["backup_gripper"], inputs["backup_gripper"])
+                backup_price = PRICING.get(backup_key, 0)
+                breakdown.append({
+                    "Component": "Backup Gripper",
+                    "Description": f"Backup: {inputs['backup_gripper']}",
+                    "Unit Price": backup_price,
+                    "Qty": 1,
+                    "Subtotal": backup_price
+                })
+
             return breakdown
 
         total_arms = sum(robot_type.values()) if robot_type else 0
@@ -628,7 +655,9 @@ with tab5:
             "engineering_and_documentation": engineering_and_documentation,
             "online_commissioning": online_commissioning,
             "installation_commissioning_training": installation_commissioning_training,
-            "lips2_support": lips2_support
+            "lips2_support": lips2_support,
+            "add_backup_gripper": add_backup_gripper,
+            "backup_gripper": backup_gripper,
         }
 
         df = pd.DataFrame(calculate_price_breakdown(inputs))
