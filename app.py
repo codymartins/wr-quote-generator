@@ -11,6 +11,11 @@ import os
 import matplotlib.pyplot as plt
 import tempfile
 from io import BytesIO
+from pptx import Presentation
+from pptx.util import Inches, Pt
+from pptx.dml.color import RGBColor
+import textwrap
+import re
 
 # --- WR Branding Setup ---
 logo = Image.open("logoWasteRobotics(1).png")  # Make sure this file is in the same directory
@@ -107,25 +112,7 @@ PRICING = {
 # --- Constants ---
 # All prices in CSV are in CAD, so CAD is the base currency
 CURRENCY_CONVERSION = {"CAD": 1.0, "USD": 0.74, "EUR": 0.68}
-# PRICING = {
-#     "robot_arm": 45000,
-#     "gripper": 6000,
-#     "conveyor": 8000,
-#     "hypervision_scanner": 12000,
-#     "ai_training": 15000,
-#     "software_license": 5000,l
-#     "fat": 4000,
-#     "try_and_buy_arm": 90000,
-#     "installation": 30000,
-#     "shipping_per_km": 3.5,
-#     "modification_small": 5000,
-#     "modification_medium": 15000,
-#     "modification_large": 30000,
-#     "security_perimeter": 2500,
-#     "warranty": 8000,
-#     "pe_stamp": 2000,
-#     "sat": 6000
-# }
+
 
 # --- UI ---
 tab1, tab2, tab3, tab4, tab5 = st.tabs([
@@ -159,8 +146,8 @@ with tab2:
     st.progress(40, text="Step 2 of 5")
     materials = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"])
     try_and_buy = st.checkbox("Include Try & Buy Option?")
-    belt_speed = st.text_input("Belt Speed (e.g. 80 ft/min)")
-    pick_rate = st.text_input("Pick Rate (e.g. 35 picks/minute)")
+    belt_speed = st.text_input("Belt Speed (m/min)")
+    pick_rate = st.text_input("Pick Rate (picks/minute)")
     # Robot Arms (type and quantity)
     robot_types_list = ["Fanuc LR-Mate", "FanucLr10iA", "Fanuc Delta DR3", "Fanuc M10", "Fanuc M20", "Fanuc M710"]
     selected_robot_types = st.multiselect("Robot Arm Types", robot_types_list)
@@ -763,7 +750,8 @@ with tab5:
             "layout_overview_top": layout_overview_top,
             "layout_overview_front": layout_overview_front,
         }
-        
+
+
 
         import tempfile
 
@@ -783,7 +771,1127 @@ with tab5:
                 mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
             )
 
+        # --- PowerPoint Generation ---
+        prs = Presentation()
+        slide_width = prs.slide_width
+        slide_height = prs.slide_height
 
+        BLUE = RGBColor(46, 125, 122)
+
+        # Helper: Dynamically fit text to box height and width
+        def fit_text_to_box(frame, text, box_height_in, box_width_in, max_font=15, min_font=8):
+            from pptx.util import Pt
+            # Estimate characters per line based on box width (roughly 10pt font = 12 chars/inch)
+            chars_per_inch = 12
+            for font_size in range(max_font, min_font - 1, -1):
+                frame.clear()
+                p = frame.add_paragraph()
+                p.text = text
+                p.font.size = Pt(font_size)
+                p.font.color.rgb = RGBColor(255, 255, 255)
+                p.font.name = "Arial"
+                frame.word_wrap = True
+                # Estimate chars per line for this font size
+                cpi = chars_per_inch * (font_size / 10)
+                max_line_len = int(box_width_in * cpi)
+                # Estimate wrapped lines
+                lines = []
+                for line in text.splitlines():
+                    lines.extend(textwrap.wrap(line, width=max_line_len) or [""])
+                n_lines = len(lines)
+                est_text_height_pt = n_lines * font_size * 1.2
+                box_height_pt = box_height_in * 72
+                if est_text_height_pt < box_height_pt:
+                    break
+        def add_page_number(slide, page_num, color=RGBColor(120, 120, 120)):
+            slide.shapes.add_textbox(
+                slide_width - Inches(1.2),
+                slide_height - Inches(0.5),
+                Inches(1),
+                Inches(0.3)
+            ).text_frame.text = f"{page_num}"
+            tf = slide.shapes[-1].text_frame
+            p = tf.paragraphs[0]
+            p.font.size = Pt(12)
+            p.font.color.rgb = color
+            p.font.name = FONT_NAME
+            p.alignment = 2  # Right
+
+        def add_footer_bar(slide, text="Waste Robotics", color=BLUE):
+            bar_height = Pt(4)
+            bar = slide.shapes.add_shape(
+                1,  # msoShapeRectangle
+                0,
+                slide_height - bar_height,
+                slide_width,
+                bar_height
+            )
+            bar.fill.solid()
+            bar.fill.fore_color.rgb = color
+            bar.line.width = Pt(0)
+            bar.line.fill.background()
+
+        def add_watermark(slide, logo_path="logo2.png"):
+            if os.path.exists(logo_path):
+                slide.shapes.add_picture(
+                    logo_path,
+                    slide_width - Inches(2.75),
+                    slide_height - Inches(0.5),
+                    width=Inches(2),
+                    height=Inches(0.25)
+                ).element.set('style', 'opacity:0.08')  # Note: python-pptx doesn't support opacity directly, but you can pre-make a transparent PNG.
+
+
+        # Branding colors
+        BRAND_RED = RGBColor(239, 58, 45)   # #EF3A2D
+        BRAND_DARK = RGBColor(15, 15, 15)   # #0F0F0F
+
+        def add_branding(slide):
+            # Set background color
+            fill = slide.background.fill
+            fill.solid()
+            fill.fore_color.rgb = BRAND_DARK
+
+            # Add logo (top left)
+            slide.shapes.add_picture("logo1.png", Inches(0.2), Inches(0.2), width=Inches(1.5))
+
+        # Always use the blank layout for new slides
+        blank_layout = prs.slide_layouts[-1]  # This is usually the blank slide
+
+        left = Inches(1)
+        top = Inches(1.2)
+        width = Inches(8)
+        height = Inches(1.2)
+
+        # --- Title Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Place the image so its left edge is at the center of the slide
+        bg_img_path = "title_background.png"
+        if os.path.exists(bg_img_path):
+            from PIL import Image as PILImage
+            img = PILImage.open(bg_img_path)
+            img_width, img_height = img.size
+            slide_px_height = int(slide_height / 9525)
+            # Scale image to fit slide height
+            scale = slide_px_height / img_height
+            new_width = int(img_width * scale)
+            new_height = slide_px_height
+            # Place so left edge aligns with center of slide
+            left = int(slide_width / 2)
+            top = 0
+            slide.shapes.add_picture(
+                bg_img_path,
+                left,
+                top,
+                width=new_width * 9525,
+                height=new_height * 9525
+            )
+
+        # Define the light blue color and font name
+        LIGHT_BLUE = RGBColor(46, 125, 122)  # #2e7d7a
+        FONT_NAME = "Arial"
+
+        # Title text on left half (never overlaps image)
+        left = Inches(0.25)
+        top = Inches(1.2)
+        width = Inches(4.5)
+        height = Inches(1.2)
+        title_shape = slide.shapes.add_textbox(left, top, width, height)
+        title_frame = title_shape.text_frame
+        title_frame.clear()
+        p = title_frame.add_paragraph()
+        p.text = f"Value Proposition: \n{value_proposition}"
+        p.font.size = Pt(30)
+        p.font.bold = False
+        p.font.color.rgb = LIGHT_BLUE
+        p.font.name = FONT_NAME
+
+        # Add a thin line above the info box
+        line_left = left
+        line_top = top + height + Inches(0.5)
+        line_width = width
+        line_height = Pt(2)
+        line_shape = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            line_left,
+            line_top,
+            line_width,
+            line_height
+        )
+        fill = line_shape.fill
+        fill.solid()
+        fill.fore_color.rgb = LIGHT_BLUE
+        line_shape.line.color.rgb = LIGHT_BLUE
+        line_shape.line.width = Pt(0)
+
+        # Info box below title (also only left half)
+        info_shape = slide.shapes.add_textbox(left, line_top + Inches(0.2), width, Inches(2.25))
+        info_frame = info_shape.text_frame
+        info_frame.clear()
+        p = info_frame.add_paragraph()
+        p.text = f"Presented to: {client_name}\nCompany: {client_company}\n\n\n\n\n\nDate: {quote_date.strftime('%B %d, %Y')}"
+        p.font.size = Pt(20)
+        p.font.color.rgb = LIGHT_BLUE
+        p.font.name = FONT_NAME
+
+        # --- Application Overview Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Colors and font
+        BLUE = RGBColor(46, 125, 122)  # #2e7d7a
+        WHITE = RGBColor(255, 255, 255)
+        FONT_NAME = "Arial"
+
+        # Heading: Application Overview
+        heading_left = Inches(0.7)
+        heading_top = Inches(1.0)
+        heading_width = Inches(7)
+        heading_height = Inches(0.8)
+        heading_shape = slide.shapes.add_textbox(heading_left, heading_top, heading_width, heading_height)
+        heading_frame = heading_shape.text_frame
+        heading_frame.clear()
+        p = heading_frame.add_paragraph()
+        p.text = "Application Overview"
+        p.font.size = Pt(32)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        # Overview text (white)
+        overview_left = heading_left
+        overview_top = heading_top + heading_height + Inches(0.1)
+        overview_width = Inches(7)
+        overview_height = Inches(1.2)
+        overview_shape = slide.shapes.add_textbox(overview_left, overview_top, overview_width, overview_height)
+        overview_frame = overview_shape.text_frame
+        overview_frame.clear()
+        p = overview_frame.add_paragraph()
+        p.text = application_overview
+        p.font.size = Pt(20)
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+
+        # "Preliminary layout design (#arm-system)" section
+        layout_label_left = heading_left
+        layout_label_top = overview_top + overview_height + Inches(0.2)
+        layout_label_width = Inches(7)
+        layout_label_height = Inches(0.5)
+        layout_label_shape = slide.shapes.add_textbox(layout_label_left, layout_label_top, layout_label_width, layout_label_height)
+        layout_label_frame = layout_label_shape.text_frame
+        layout_label_frame.clear()
+        p = layout_label_frame.add_paragraph()
+        p.text = f"Preliminary layout design ({inputs['robot_arms']}-arm system)"
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        # ISO image centered below the label
+        iso_img_top = layout_label_top + layout_label_height + Inches(0.4)
+        iso_img_width = Inches(5)
+        iso_img_height = Inches(3)
+        iso_img_left = heading_left 
+
+        slide.shapes.add_picture(
+            iso_path,
+            iso_img_left,
+            iso_img_top,
+            width=iso_img_width,
+            height=iso_img_height
+        )
+        add_page_number(slide, 1)
+        add_footer_bar(slide)
+        add_watermark(slide)
+
+        # --- Layout Images Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        # Title: Layout Overview (#arms-system)
+        layout_title = f"Layout Overview ({inputs['robot_arms']}-arm system)"
+        title_left = Inches(0.7)
+        title_top = Inches(1.0)
+        title_width = Inches(7)
+        title_height = Inches(0.8)
+        title_shape = slide.shapes.add_textbox(title_left, title_top, title_width, title_height)
+        title_frame = title_shape.text_frame
+        title_frame.clear()
+        p = title_frame.add_paragraph()
+        p.text = layout_title
+        p.font.size = Pt(32)
+        p.font.bold = True
+        p.font.color.rgb = RGBColor(46, 125, 122)  # #2e7d7a
+        p.font.name = "Arial"
+
+        # Arrange images side by side, centered, keeping natural proportions
+        from PIL import Image as PILImage
+
+        def get_scaled_size(img_path, max_width_in, max_height_in):
+            img = PILImage.open(img_path)
+            img_w, img_h = img.size
+            dpi = 96  # Assume 96 dpi for conversion
+            max_w_px = max_width_in * dpi
+            max_h_px = max_height_in * dpi
+            scale = min(max_w_px / img_w, max_h_px / img_h, 1.0)
+            return img_w * scale / dpi, img_h * scale / dpi  # return in inches
+
+        max_img_width = Inches(4)
+        max_img_height = Inches(3)
+        spacing = Inches(0.5)
+
+        # Top view image (left)
+        top_w_in, top_h_in = get_scaled_size(top_path, 4, 3)
+        # Front view image (right)
+        front_w_in, front_h_in = get_scaled_size(front_path, 4, 3)
+
+        # Calculate total width for centering
+        total_width = Inches(top_w_in) + Inches(front_w_in) + spacing
+        img_top = title_top + title_height + Inches(0.3)
+        img_left = (slide_width - total_width) // 2
+
+        # Top view image (left)
+        slide.shapes.add_picture(
+            top_path,
+            img_left,
+            img_top,
+            width=Inches(top_w_in),
+            height=Inches(top_h_in)
+        )
+
+        # Front view image (right)
+        slide.shapes.add_picture(
+            front_path,
+            img_left + Inches(top_w_in) + spacing,
+            img_top,
+            width=Inches(front_w_in),
+            height=Inches(front_h_in)
+        )
+        add_page_number(slide, 2)
+        add_footer_bar(slide)
+        add_watermark(slide)
+
+        # --- Robot Arm & Gripper Model Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        BLUE = RGBColor(46, 125, 122)
+        FONT_NAME = "Arial"
+
+        # Layout parameters
+        margin_left = Inches(0.7)
+        margin_right = Inches(5)
+        title_top = Inches(1.0)
+        title_height = Inches(0.4)
+        gap_after_title = Inches(0.4)
+        img_top_start = title_top
+        img_width = Inches(3.0)
+        img_height = Inches(2.2)
+        img_spacing = Inches(0.3)
+
+        # --- Robot Arms (left column) ---
+        if robot_type:
+            for idx, rtype in enumerate(robot_type.keys()):
+                # Title for each arm
+                arm_title_top = img_top_start + idx * (title_height + img_height + img_spacing)
+                arm_title_shape = slide.shapes.add_textbox(
+                    margin_left,
+                    arm_title_top,
+                    img_width,
+                    title_height
+                )
+                arm_title_frame = arm_title_shape.text_frame
+                arm_title_frame.clear()
+                p = arm_title_frame.add_paragraph()
+                p.text = f"Robot Arm Model: {rtype}"
+                p.font.size = Pt(18)
+                p.font.bold = True
+                p.font.color.rgb = BLUE
+                p.font.name = FONT_NAME
+
+                # Image for each arm
+                arm_img_top = arm_title_top + title_height + gap_after_title
+                base_name = rtype.lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
+                robot_arm_filename = f"robot_{base_name}.png"
+                if not os.path.exists(robot_arm_filename):
+                    robot_arm_filename = "robot_default.png"
+                slide.shapes.add_picture(
+                    robot_arm_filename,
+                    margin_left + Inches(0.15),
+                    arm_img_top,
+                    width=img_width,
+                    height=img_height
+                )
+
+        # --- Grippers (right column) ---
+        if gripper_type:
+            for idx, gtype in enumerate(gripper_type.keys()):
+                # Title for each gripper
+                gripper_title_top = img_top_start + idx * (title_height + img_height + img_spacing)
+                gripper_title_shape = slide.shapes.add_textbox(
+                    margin_right - Inches(0.15),
+                    gripper_title_top,
+                    img_width,
+                    title_height
+                )
+                gripper_title_frame = gripper_title_shape.text_frame
+                gripper_title_frame.clear()
+                p = gripper_title_frame.add_paragraph()
+                p.text = f"Gripper Model: {gtype}"
+                p.font.size = Pt(18)
+                p.font.bold = True
+                p.font.color.rgb = BLUE
+                p.font.name = FONT_NAME
+
+                # Image for each gripper
+                gripper_img_top = gripper_title_top + title_height + gap_after_title
+                base_name = gtype.lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
+                gripper_filename = f"gripper_{base_name}.png"
+                if not os.path.exists(gripper_filename):
+                    gripper_filename = "gripper_default.png"
+                slide.shapes.add_picture(
+                    gripper_filename,
+                    margin_right,
+                    gripper_img_top,
+                    width=img_width,
+                    height=img_height
+                )
+        add_page_number(slide, 3)
+        add_footer_bar(slide)
+        add_watermark(slide)
+
+        # --- Vision System Sensor Fusion Slide (Centered Titles/Labels) ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        BLUE = RGBColor(46, 125, 122)
+        WHITE = RGBColor(255, 255, 255)
+        BLACK = RGBColor(12, 12, 12)
+        FONT_NAME = "Arial"
+
+        # --- Centered Main Title ---
+        main_title = "ROBOT VISION SYSTEM SENSOR FUSION"
+        main_title_width = Inches(8)
+        main_title_height = Inches(0.8)
+        main_title_left = (slide_width - main_title_width) // 2
+        main_title_top = Inches(1)
+        title_shape = slide.shapes.add_textbox(main_title_left, main_title_top, main_title_width, main_title_height)
+        title_frame = title_shape.text_frame
+        title_frame.clear()
+        p = title_frame.add_paragraph()
+        p.text = main_title
+        p.font.size = Pt(28)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+        title_frame.paragraphs[0].alignment = 1  # Center
+
+        # Add a thin vertical blue line down the middle below the title
+        line_width = Pt(2)
+        line_height = Inches(4.5)  # Adjust as needed for your layout
+        line_left = (slide_width // 2) - (line_width // 2) - Inches(0.55)
+        line_top = main_title_top + main_title_height + Inches(0.1)
+
+        line_shape = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            line_left,
+            line_top,
+            line_width,
+            line_height
+        )
+        fill = line_shape.fill
+        fill.solid()
+        fill.fore_color.rgb = BLUE
+        line_shape.line.color.rgb = BLUE
+        line_shape.line.width = Pt(0)
+
+        # --- Left Section: Vision system image ---
+        vision_img_path = "vision_system.png"
+        vision_img_width = Inches(2.5)
+        vision_img_height = Inches(2)
+        vision_img_left = Inches(1.4)
+        vision_img_top = main_title_top + main_title_height + Inches(1.25)
+        slide.shapes.add_picture(
+            vision_img_path,
+            vision_img_left,
+            vision_img_top,
+            width=vision_img_width,
+            height=vision_img_height
+        )
+
+        # Centered Deepvision label below the image
+        label_top = vision_img_top + vision_img_height + Inches(0.2)
+        label_shape = slide.shapes.add_textbox(
+            vision_img_left + Inches(0.6),
+            label_top - Inches(0.4),
+            vision_img_width,
+            Inches(0.4)
+        )
+        label_frame = label_shape.text_frame
+        label_frame.clear()
+        p = label_frame.add_paragraph()
+        p.text = "Deepvision"
+        p.font.size = Pt(16)
+        p.font.bold = False
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+        label_frame.paragraphs[0].alignment = 1  # Center
+
+        # --- Right Section: Vision comparison image ---
+        comparison_img_path = "vision_comparison.png"
+        comparison_img_width = Inches(3.75)
+        comparison_img_height = Inches(4)
+        comparison_img_left = Inches(5.0)
+        comparison_img_top = main_title_top + main_title_height + Inches(0.2)
+        slide.shapes.add_picture(
+            comparison_img_path,
+            comparison_img_left,
+            comparison_img_top,
+            width=comparison_img_width,
+            height=comparison_img_height
+        )
+
+        # Centered section labels ("Color", "3d", "AI") beneath each third of the comparison image
+        section_titles = ["Color", "3d", "AI"]
+        section_width_each = comparison_img_width / 3
+        section_label_top = comparison_img_top + comparison_img_height + Inches(0.1)
+        for i, section in enumerate(section_titles):
+            section_left = comparison_img_left + section_width_each * i
+            section_shape = slide.shapes.add_textbox(
+                section_left  + Inches(0.25),
+                section_label_top - Inches(0.4),
+                section_width_each,
+                Inches(0.3)
+            )
+            section_frame = section_shape.text_frame
+            section_frame.clear()
+            p = section_frame.add_paragraph()
+            p.text = section
+            p.font.size = Pt(14)
+            p.font.bold = False
+            p.font.color.rgb = WHITE
+            p.font.name = FONT_NAME
+            section_frame.paragraphs[0].alignment = 1  # Center
+        add_page_number(slide, 4)
+        add_footer_bar(slide)
+        add_watermark(slide)
+
+        # --- Inclusions & Exclusions Slide ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+
+        BLUE = RGBColor(46, 125, 122)   # #2e7d7a
+        RED = RGBColor(239, 58, 45)     # #EF3A2D
+        WHITE = RGBColor(255, 255, 255)
+        FONT_NAME = "Arial"
+
+        # --- Top black bar ---
+        bar_height = Inches(1.25)
+        bar_shape = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            0, 0,
+            slide_width,
+            bar_height
+        )
+        bar_fill = bar_shape.fill
+        bar_fill.solid()
+        bar_fill.fore_color.rgb = BLACK
+        bar_shape.line.width = Pt(0)
+        bar_shape.line.fill.background()
+
+        # --- Logo on top left (over the black bar) ---
+        logo_path = "logoWasteRobotics(1).png"
+        logo_width = Inches(1.5)
+        logo_height = Inches(0.8)
+        logo_left = Inches(0.2)
+        logo_top = Inches(0.1)
+        if os.path.exists(logo_path):
+            slide.shapes.add_picture(logo_path, logo_left, logo_top, width=logo_width, height=logo_height)
+
+        # --- Section backgrounds start below the bar ---
+        side_margin = Inches(0.7)
+        top_margin = bar_height
+        section_width = (slide_width - 2 * side_margin) // 2
+        section_height = slide_height - top_margin
+
+        # Slide dimensions
+        half_width = slide_width // 2
+        slide_height_in = slide_height / 914400  # EMU to inches
+
+        # --- Left: Inclusions ---
+        inclusions_left = 0
+        inclusions_top = bar_height
+        inclusions_width = half_width
+        inclusions_height = slide_height - Inches(1.25)
+
+        # Blue background rectangle
+        left_bg = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            inclusions_left,
+            inclusions_top,
+            inclusions_width,
+            inclusions_height
+        )
+        fill = left_bg.fill
+        fill.solid()
+        fill.fore_color.rgb = BLUE
+        left_bg.line.width = Pt(0)
+        left_bg.line.fill.background()
+
+        # Inclusions label
+        label_shape = slide.shapes.add_textbox(
+            Inches(0.5),
+            Inches(1.0),
+            Inches(3.5),
+            Inches(0.6)
+        )
+        label_frame = label_shape.text_frame
+        label_frame.clear()
+        p = label_frame.add_paragraph()
+        p.text = "Inclusions"
+        p.font.size = Pt(28)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+
+        # Build inclusions list
+        inclusions_list = []
+        # #arms of typeofarm
+        if robot_type:
+            for rtype, qty in robot_type.items():
+                inclusions_list.append(f"{qty} x {rtype} robot arm(s)")
+        # #robot bases
+        if robot_bases:
+            for btype, qty in robot_bases.items():
+                inclusions_list.append(f"{qty} x {btype} robot base(s)")
+        # # of grippers
+        if gripper_type:
+            for gtype, qty in gripper_type.items():
+                inclusions_list.append(f"{qty} x {gtype} gripper(s)")
+        # Shipping
+        inclusions_list.append(f"Shipping to {site_location}")
+
+        # All selected inclusions from tab 5
+        tab5_labels = [
+            ("safety_fencing", "Safety Fencing"),
+            ("conveyor_var_speed_license", "Conveyor Variable Speed License"),
+            ("custom_ai_training", "Custom AI Training"),
+            ("robot_validator_license", "Robot Validator License"),
+            ("greyparrot_monitoring_unit", "GreyParrot Monitoring Unit"),
+            ("installation_supervision", "Installation Supervision"),
+            ("additional_sorting_recipes", "Additional Sorting Recipes"),
+            ("sat_to_cfa", "SAT to CFA"),
+            ("engineering_and_documentation", "Engineering & Documentation"),
+            ("online_commissioning", "Online Commissioning"),
+            ("installation_commissioning_training", "Installation, Commissioning & Training"),
+            ("lips2_support", "LIPS2 Support"),
+            ("warranty_option", f"Warranty: {warranty_option}" if warranty_option != "None" else None)
+        ]
+        for key, label in tab5_labels:
+            if key == "warranty_option":
+                if warranty_option != "None":
+                    inclusions_list.append(label)
+            elif locals().get(key):
+                inclusions_list.append(label)
+
+        # Inclusions list text box
+        inclusions_text = "\n".join(f"• {item}" for item in inclusions_list)
+        inclusions_box_left = Inches(0.5)
+        inclusions_box_top = Inches(1.7)
+        inclusions_box_width = Inches(3.8)
+        inclusions_box_height = slide_height - inclusions_box_top - Inches(0.3)  # leave a bottom margin
+        inclusions_box = slide.shapes.add_textbox(
+            inclusions_box_left,
+            inclusions_box_top,
+            inclusions_box_width,
+            inclusions_box_height
+        )
+        inclusions_frame = inclusions_box.text_frame
+        fit_text_to_box(
+            inclusions_frame,
+            inclusions_text,
+            inclusions_box_height / 914400,  # convert EMU to inches if needed, but Inches() returns EMU
+            inclusions_box_width / 914400
+        )
+
+        # --- Right: Exclusions ---
+        exclusions_left = half_width
+        exclusions_top = bar_height
+        exclusions_width = half_width
+        exclusions_height = slide_height - Inches(1.25);
+
+        # Red background rectangle
+        right_bg = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            exclusions_left,
+            exclusions_top,
+            exclusions_width,
+            exclusions_height
+        )
+        fill = right_bg.fill
+        fill.solid()
+        fill.fore_color.rgb = RED
+        right_bg.line.width = Pt(0)
+        right_bg.line.fill.background()
+        # Exclusions label
+        ex_label_shape = slide.shapes.add_textbox(
+            Inches(5.2),
+            Inches(1.0),
+            Inches(3.5),
+            Inches(0.6)
+        )
+        ex_label_frame = ex_label_shape.text_frame
+        ex_label_frame.clear()
+        p = ex_label_frame.add_paragraph()
+        p.text = "Exclusions"
+        p.font.size = Pt(28)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+
+        # Build exclusions list (not selected in tab 5)
+        exclusions_list = []
+        for key, label in tab5_labels:
+            if key == "warranty_option":
+                if warranty_option == "None":
+                    exclusions_list.append("Warranty")
+            elif not locals().get(key):
+                exclusions_list.append(label)
+
+        # Always include these exclusions
+        exclusions_list += [
+            "All modifications required on current equipment to integrate the robotic system",
+            "Electrical hookup in client’s facility",
+            f"Total input power: {input_power_kva}kVA",
+            f"Average Power Consumption: {avg_consumption_kw}kW",
+            "Internet hookup in client’s facility (up/down 100 Mbits/sec)",
+            f"Compressed air hookup in client’s facility (total air consumption: {air_consumption_lpm}L/min)",
+            "Taxes, customs and/or duty charges"
+        ]
+
+        # Exclusions list text box
+        exclusions_text = "\n".join(f"• {item}" for item in exclusions_list)
+        exclusions_box_left = Inches(5.2)
+        exclusions_box_top = Inches(1.7)
+        exclusions_box_width = Inches(3.8)
+        exclusions_box_height = slide_height - exclusions_box_top - Inches(0.3)
+        exclusions_box = slide.shapes.add_textbox(
+            exclusions_box_left,
+            exclusions_box_top,
+            exclusions_box_width,
+            exclusions_box_height
+        )
+        exclusions_frame = exclusions_box.text_frame
+        fit_text_to_box(
+            exclusions_frame,
+            exclusions_text,
+            exclusions_box_height / 914400,
+            exclusions_box_width / 914400
+        )
+        add_page_number(slide, 5)
+
+        # --- System Specifications & Buying Price Slide (Stacked vertically) ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        BLUE = RGBColor(46, 125, 122)
+        WHITE = RGBColor(255, 255, 255)
+        FONT_NAME = "Arial"
+
+        # Margins and widths
+        left_margin = Inches(0.7)
+        content_width = slide_width - 2 * left_margin
+
+        # --- System Specifications (top) ---
+        specs_top = Inches(1.2)
+        specs_label_shape = slide.shapes.add_textbox(
+            left_margin,
+            specs_top,
+            content_width,
+            Inches(0.5)
+        )
+        specs_label_frame = specs_label_shape.text_frame
+        specs_label_frame.clear()
+        p = specs_label_frame.add_paragraph()
+        p.text = "System Specifications"
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        specs_content = (
+            f"Up to {pick_rate}\n"
+            f"Maximum Object Weight Per Robot: {max_object_weight} kg\n"
+            f"Robots operating conditions: 5°C to 45°C"
+        )
+        specs_content_shape = slide.shapes.add_textbox(
+            left_margin,
+            specs_top + Inches(0.6),
+            content_width,
+            Inches(1.0)
+        )
+        specs_content_frame = specs_content_shape.text_frame
+        specs_content_frame.clear()
+        p = specs_content_frame.add_paragraph()
+        p.text = specs_content
+        p.font.size = Pt(16)
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+
+        # --- Thin blue line between sections ---
+        line_left = left_margin
+        line_top = specs_top + Inches(2.7)  # Just below specs section
+        line_width = content_width
+        line_height = Pt(2)
+        line_shape = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            line_left,
+            line_top,
+            line_width,
+            line_height
+        )
+        fill = line_shape.fill
+        fill.solid()
+        fill.fore_color.rgb = BLUE
+        line_shape.line.color.rgb = BLUE
+        line_shape.line.width = Pt(0)
+        line_shape.line.fill.background()
+
+        # --- Buying Price (below specs) ---
+        price_top = line_top + Inches(0.2)
+        price_label_shape = slide.shapes.add_textbox(
+            left_margin,
+            price_top,
+            content_width,
+            Inches(0.5)
+        )
+        price_label_frame = price_label_shape.text_frame
+        price_label_frame.clear()
+        p = price_label_frame.add_paragraph()
+        p.text = "Buying Price"
+        p.font.size = Pt(22)
+        p.font.bold = True
+        p.font.color.rgb = BLUE
+        p.font.name = FONT_NAME
+
+        additional_arm_price = PRICING.get("try_and_buy_arm", 0) * multiplier
+        price_content = (
+            f"Robotic Sorting System: {currency} {total:,.0f}\n"
+            f"Additional Robot Arm: {currency} {additional_arm_price:,.0f}"
+        )
+        price_content_shape = slide.shapes.add_textbox(
+            left_margin,
+            price_top + Inches(0.6),
+            content_width,
+            Inches(1.0)
+        )
+        price_content_frame = price_content_shape.text_frame
+        price_content_frame.clear()
+        p = price_content_frame.add_paragraph()
+        p.text = price_content
+        p.font.size = Pt(16)
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+
+        # Disclaimer in small white font
+        disclaimer = "* Prices may vary due to exchange rates, inflation, and integration engineering. Valid for 30 days."
+        disclaimer_shape = slide.shapes.add_textbox(
+            left_margin,
+            price_top + Inches(1.7),
+            content_width,
+            Inches(0.5)
+        )
+        disclaimer_frame = disclaimer_shape.text_frame
+        disclaimer_frame.clear()
+        p = disclaimer_frame.add_paragraph()
+        p.text = disclaimer
+        p.font.size = Pt(10)
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+        add_page_number(slide, 6)
+        add_footer_bar(slide)
+        add_watermark(slide)
+
+        # --- Timeline Slide with Alternating Connectors and Unified Durations ---
+        slide = prs.slides.add_slide(blank_layout)
+        add_branding(slide)
+        for shape in list(slide.shapes):
+            if shape.is_placeholder:
+                slide.shapes._spTree.remove(shape._element)
+
+        BLUE = RGBColor(46, 125, 122)
+        WHITE = RGBColor(255, 255, 255)
+        FONT_NAME = "Arial"
+
+        timeline_events = [
+            ("Project Kickoff", order_confirmation_project_kickoff),
+            ("Detailed Engineering", detailed_engineering),
+            ("Engineering Review", engineering_review),
+            ("Procurement & Fabrication", procurement_fabrication),
+            ("FAT & Shipping", fat_shipping),
+            ("Retrofit & Installation", retrofit_installation),
+            ("Commissioning \n & SAT", commissioning_and_SAT)
+        ]
+
+        timeline_left = Inches(1.0)
+        timeline_right = slide_width - Inches(1.0)
+        timeline_top = Inches(3.0)
+        timeline_height = Pt(3)
+        timeline_width = timeline_right - timeline_left
+
+        # Draw timeline line
+        line_shape = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            timeline_left,
+            timeline_top,
+            timeline_width,
+            timeline_height
+        )
+        fill = line_shape.fill
+        fill.solid()
+        fill.fore_color.rgb = BLUE
+        line_shape.line.color.rgb = BLUE
+        line_shape.line.width = Pt(0)
+
+        n_events = len(timeline_events)
+        circle_radius = Pt(14)
+        label_box_height = Inches(0.4)
+        label_box_width = Inches(1.4)
+        connector_length = Inches(0.7)
+        connector_width = Pt(2)
+
+        # For unified durations row
+        duration_box_height = Inches(0.3)
+        duration_row_top = timeline_top + Inches(1.0)
+        duration_box_width = Inches(1.0)  # or adjust as needed
+
+        for i, (label, duration) in enumerate(timeline_events):
+            x = timeline_left + i * (timeline_width / (n_events - 1))
+            y = timeline_top + timeline_height / 2 - circle_radius / 2
+
+            # Draw circle
+            circle = slide.shapes.add_shape(
+                9,  # msoShapeOval
+                x - circle_radius / 2,
+                y,
+                circle_radius,
+                circle_radius
+            )
+            circle.fill.solid()
+            circle.fill.fore_color.rgb = BLUE
+            circle.line.color.rgb = WHITE
+            circle.line.width = Pt(2)
+
+            # Alternate connector direction and label position
+            if i % 2 == 0:
+                # Upwards connector
+                connector_y1 = y
+                connector_y2 = y - connector_length
+                connector = slide.shapes.add_shape(
+                    1,  # msoShapeRectangle
+                    x - connector_width / 2,
+                    connector_y2,
+                    connector_width,
+                    connector_y1 - connector_y2
+                )
+                connector.fill.solid()
+                connector.fill.fore_color.rgb = BLUE
+                connector.line.color.rgb = BLUE
+                connector.line.width = Pt(0)
+                connector.line.fill.background()
+
+                # Label above connector
+                label_shape = slide.shapes.add_textbox(
+                    x - label_box_width / 2,
+                    connector_y2 - label_box_height - Inches(0.25),
+                    label_box_width,
+                    label_box_height
+                )
+                label_frame = label_shape.text_frame
+                label_frame.clear()
+                p = label_frame.add_paragraph()
+                p.text = label
+                p.font.size = Pt(14)
+                p.font.bold = True
+                p.font.color.rgb = WHITE
+                p.font.name = FONT_NAME
+                label_frame.paragraphs[0].alignment = 1  # Center
+
+                # Duration just below the circle
+                duration_shape = slide.shapes.add_textbox(
+                    x - duration_box_width / 2,
+                    y + circle_radius - Inches(0.25),
+                    duration_box_width,
+                    duration_box_height
+                )
+                duration_frame = duration_shape.text_frame
+                duration_frame.clear()
+                p = duration_frame.add_paragraph()
+                p.text = duration
+                p.font.size = Pt(12)
+                p.font.color.rgb = BLUE
+                p.font.name = FONT_NAME
+                duration_frame.paragraphs[0].alignment = 1  # Center
+
+            else:
+                # Downwards connector
+                connector_y1 = y + circle_radius
+                connector_y2 = connector_y1 + connector_length
+                connector = slide.shapes.add_shape(
+                    1,  # msoShapeRectangle
+                    x - connector_width / 2,
+                    connector_y1,
+                    connector_width,
+                    connector_y2 - connector_y1
+                )
+                connector.fill.solid()
+                connector.fill.fore_color.rgb = BLUE
+                connector.line.color.rgb = BLUE
+                connector.line.width = Pt(0)
+                connector.line.fill.background()
+
+                # Label below connector
+                label_shape = slide.shapes.add_textbox(
+                    x - label_box_width / 2,
+                    connector_y2 - Inches(0.25),
+                    label_box_width,
+                    label_box_height
+                )
+                label_frame = label_shape.text_frame
+                label_frame.clear()
+                p = label_frame.add_paragraph()
+                p.text = label
+                p.font.size = Pt(14)
+                p.font.bold = True
+                p.font.color.rgb = WHITE
+                p.font.name = FONT_NAME
+                label_frame.paragraphs[0].alignment = 1  # Center
+
+                # Duration just above the circle
+                duration_shape = slide.shapes.add_textbox(
+                    x - duration_box_width / 2,
+                    y - duration_box_height - Inches(0.25),
+                    duration_box_width,
+                    duration_box_height
+                )
+                duration_frame = duration_shape.text_frame
+                duration_frame.clear()
+                p = duration_frame.add_paragraph()
+                p.text = duration
+                p.font.size = Pt(12)
+                p.font.color.rgb = BLUE
+                p.font.name = FONT_NAME
+                duration_frame.paragraphs[0].alignment = 1  # Center
+
+        # --- Thin line beneath the timeline and durations ---
+        line_below_top = duration_row_top + duration_box_height + Inches(0.5)
+        line_below_left = timeline_left - Inches(0.75)
+        line_below_width = timeline_width + Inches(1.5)
+        line_below_height = Pt(2)
+        line_below = slide.shapes.add_shape(
+            1,  # msoShapeRectangle
+            line_below_left,
+            line_below_top,
+            line_below_width,
+            line_below_height
+        )
+        fill = line_below.fill
+        fill.solid()
+        fill.fore_color.rgb = BLUE
+        line_below.line.color.rgb = BLUE
+        line_below.line.width = Pt(0)
+        line_below.line.fill.background()
+
+        # --- Delivery section ---
+        # Calculate total weeks (sum numbers in durations)
+        def extract_weeks(duration):
+            match = re.search(r"(\d+)", str(duration))
+            return int(match.group(1)) if match else 0
+
+        total_weeks = sum(extract_weeks(d) for _, d in timeline_events)
+
+        delivery_label_top = line_below_top + Inches(0.3)
+        delivery_label_left = timeline_left
+        delivery_label_width = timeline_width
+        delivery_label_height = Inches(0.4)
+
+        # "Delivery:" label and total weeks
+        delivery_shape = slide.shapes.add_textbox(
+            delivery_label_left,
+            delivery_label_top,
+            delivery_label_width,
+            delivery_label_height
+        )
+        delivery_frame = delivery_shape.text_frame
+        delivery_frame.clear()
+        p = delivery_frame.add_paragraph()
+        p.text = f"Delivery: {total_weeks} weeks"
+        p.font.size = Pt(18)
+        p.font.bold = True
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+        delivery_frame.paragraphs[0].alignment = 1  # Center
+
+        # Disclaimer
+        disclaimer_shape = slide.shapes.add_textbox(
+            delivery_label_left,
+            delivery_label_top + delivery_label_height,
+            delivery_label_width,
+            Inches(0.3)
+        )
+        disclaimer_frame = disclaimer_shape.text_frame
+        disclaimer_frame.clear()
+        p = disclaimer_frame.add_paragraph()
+        p.text = "(to be confirmed at order time)"
+        p.font.size = Pt(12)
+        p.font.color.rgb = WHITE
+        p.font.name = FONT_NAME
+        disclaimer_frame.paragraphs[0].alignment = 1  # Center
+        add_page_number(slide, 7)
+        add_footer_bar(slide)
+        add_watermark(slide)
+
+        # --- Download PPTX ---
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pptx") as tmp:
+            pptx_file_path = tmp.name
+            prs.save(pptx_file_path)
+
+        st.success("✅ Quote PowerPoint generated successfully!")
+
+        with open(pptx_file_path, "rb") as f:
+            st.download_button(
+                label="📊 Download Quote PPTX",
+                data=f,
+                file_name=f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.pptx",
+                mime="application/vnd.openxmlformats-officedocument.presentationml.presentation"
+            )
+
+
+# Footer branding (if needed)
 st.markdown("""
     <div class="footer" style='
         position: fixed;
