@@ -138,6 +138,16 @@ with tab1:
     else:
         num_trucks_or_containers = st.number_input("Number of Containers (Boat)", min_value=1, value=1, step=1)
     currency = st.selectbox("Currency", ["USD", "CAD", "EUR"])
+    if currency != "CAD":
+        st.markdown(
+            f"Get the latest {currency}/CAD exchange rate from [xe.com](https://www.xe.com/currencyconverter/)."
+        )
+        user_rate = st.number_input(
+            f"Enter the current {currency}/CAD exchange rate", min_value=0.0001, value=0.74 if currency == "USD" else 0.68, format="%.4f"
+        )
+        multiplier = user_rate
+    else:
+        multiplier = 1.0
     application_overview = st.text_area("Brief Summary of the Application")
 
 
