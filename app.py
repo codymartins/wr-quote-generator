@@ -154,9 +154,9 @@ with tab1:
 with tab2:
     st.header("System Configuration")
     st.progress(40, text="Step 2 of 5")
-    materials = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"])
-    try_and_buy = st.checkbox("Include Try & Buy Option?")
-    belt_speed = st.text_input("Belt Speed (m/min)")
+    materials = st.multiselect("Materials to Sort", ["PCBs", "UBCs", "Trash", "Other"]) # remove 
+    try_and_buy = st.checkbox("Include Try & Buy Option?") # change to additional arm
+    belt_speed = st.text_input("Belt Speed (m/min)") # remove
     pick_rate = st.text_input("Pick Rate (picks/minute)")
     # Robot Arms (type and quantity)
     robot_types_list = ["Fanuc LR-Mate", "FanucLr10iA", "Fanuc Delta DR3", "Fanuc M10", "Fanuc M20", "Fanuc M710"]
@@ -177,7 +177,7 @@ with tab2:
             robot_bases[base] = qty
 
     # Grippers (type and quantity)
-    gripper_types_list = ["VentuR", "BagR", "BagR CO", "PinchR Lr & M10", "MonstR", "DagR"]
+    gripper_types_list = ["VentuR", "BagR", "BagR CO", "PinchR Lr & M10", "MonstR", "DagR"] # change pinchr to just pinchr
     selected_grippers = st.multiselect("Gripper Types", gripper_types_list)
     gripper_type = {}
     for gtype in selected_grippers:
@@ -220,11 +220,9 @@ with tab3:
     avg_consumption_kw = st.number_input("Average Power Consumption (kW)", min_value=0.0)
     air_consumption_lpm = st.number_input("Total Air Consumption (L/min)", min_value=0)
 
-with tab4:
+with tab4: #simplify with one field
     st.header("Shipping & Timeline")
     st.progress(80, text="Step 4 of 5")
-    # shipping_distance = st.text_input("Estimated Shipping Distance (miles or km)")
-    # Shipping distance is now replaced by method/count logic
     order_confirmation_project_kickoff = st.text_input("Order Confirmation / Project Kickoff Duration")
     detailed_engineering = st.text_input("Detailed Engineering Duration")
     engineering_review = st.text_input("Engineering Review Duration")
