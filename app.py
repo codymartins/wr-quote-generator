@@ -159,7 +159,7 @@ with tab2:
     belt_speed = st.text_input("Belt Speed (m/min)") # remove
     pick_rate = st.text_input("Pick Rate (picks/minute)")
     # Robot Arms (type and quantity)
-    robot_types_list = ["Fanuc LR-Mate", "FanucLr10iA", "Fanuc Delta DR3", "Fanuc M10", "Fanuc M20", "Fanuc M710"]
+    robot_types_list = ["Fanuc LRMate 200iD-7L", "FanucLr10iA", "Fanuc Delta DR3", "Fanuc M-10iD-10L", "Fanuc M-20iD-25", "Fanuc M-710iC-45"]
     selected_robot_types = st.multiselect("Robot Arm Types", robot_types_list)
     robot_type = {}
     for rtype in selected_robot_types:
@@ -177,7 +177,7 @@ with tab2:
             robot_bases[base] = qty
 
     # Grippers (type and quantity)
-    gripper_types_list = ["VentuR", "BagR", "BagR CO", "PinchR Lr & M10", "MonstR", "DagR"] # change pinchr to just pinchr
+    gripper_types_list = ["VentuR", "BagR", "PinchR", "MonstR"] 
     selected_grippers = st.multiselect("Gripper Types", gripper_types_list)
     gripper_type = {}
     for gtype in selected_grippers:
@@ -424,20 +424,18 @@ with tab5:
 
             # Key mappings for CSV
             robot_key_map = {
-                "Fanuc LR-Mate": "Fanuc_LR-Mate",
+                "Fanuc LRMate 200iD-7L": "Fanuc_LRMate_200iD-7L",
                 "FanucLr10iA": "FanucLr10iA",
                 "Fanuc Delta DR3": "Fanuc_Delta_DR3",
-                "Fanuc M10": "Fanuc_M10",
-                "Fanuc M20": "Fanuc_M20",
-                "Fanuc M710": "Fanuc_M710"
+                "Fanuc M-10iD-10L": "Fanuc_M-10iD-10L",
+                "Fanuc M-20iD-25": "Fanuc_M-20iD-25",
+                "Fanuc M-710iC-45": "Fanuc_M-710iC-45"
             }
             gripper_key_map = {
                 "VentuR": "VentuR",
                 "BagR": "BagR",
-                "BagR CO": "BagR_CO",
-                "PinchR Lr & M10": "PinchR_Lr_&_M10",
-                "MonstR": "MonstR",
-                "DagR": "DagR"
+                "PinchR": "PinchR",
+                "MonstR": "MonstR"
             }
             vision_key_map = {
                 "DeepVision System": "DeepVision_System",
@@ -614,10 +612,8 @@ with tab5:
                 gripper_key_map = {
                     "VentuR": "VentuR",
                     "BagR": "BagR",
-                    "BagR CO": "BagR_CO",
-                    "PinchR Lr & M10": "PinchR_Lr_&_M10",
-                    "MonstR": "MonstR",
-                    "DagR": "DagR"
+                    "PinchR": "PinchR",
+                    "MonstR": "MonstR"
                 }
                 backup_key = gripper_key_map.get(inputs["backup_gripper"], inputs["backup_gripper"])
                 backup_price = PRICING.get(backup_key, 0)
@@ -668,19 +664,7 @@ with tab5:
         st.markdown(f"### **Total Estimated Price: {currency} {total:,.0f}**")
 
         # --- DOCX Generation ---
-        doc = DocxTemplate("template_practice.docx")
-
-        # Robot Arm Images (one per selected type)
-        if robot_type:
-            robot_arm_images = []
-            for rtype in robot_type.keys():
-                base_name = rtype.lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
-                robot_arm_filename = f"robot_{base_name}.png"
-                if not os.path.exists(robot_arm_filename):
-                    robot_arm_filename = "robot_default.png"
-                robot_arm_images.append(InlineImage(doc, robot_arm_filename, width=Mm(100), height=Mm(80)))
-        else:
-            robot_arm_images = [InlineImage(doc, "robot_default.png", width=Mm(100), height=Mm(80))]
+ 
 
         # --- Build Configuration ID for Image Lookup ---
         def sanitize(s):
@@ -724,28 +708,12 @@ with tab5:
         base_assets_path = os.path.abspath("Assets")
         assets_folder = os.path.join(base_assets_path, config_id)
 
-        st.write(f"🔍 Looking for config folder: {assets_folder}")  # ✅ Debugging
-
-        # --- Validate the folder ---
-        if not os.path.isdir(assets_folder):
-            st.warning(f"⚠️ Config folder '{config_id}' not found, searching for alternate gripper images.")
-            # Try to find another gripper type with the same layout
-            alt_folder, alt_gripper = get_existing_config_folder(
-                num_arms, robot_type_str, disposition_str, vrs_model_str, gripper_types_list, base_assets_path
-            )
-            if alt_folder != base_assets_path:
-                st.info(f"Using images from configuration with gripper '{alt_gripper}'.")
-                assets_folder = alt_folder
-            else:
-                st.warning("No alternate configuration images found, using default images.")
-                assets_folder = base_assets_path  # fallback to root
 
         # --- ISO Image ---
         iso_path = os.path.join(assets_folder, "iso.png")
         if not os.path.exists(iso_path):
             st.warning(f"⚠️ Missing iso.png for {config_id}, using default.")
             iso_path = "robot_default.png"
-        layout_image = InlineImage(doc, iso_path, width=Mm(100), height=Mm(80))
 
         # --- Top & Front Images ---
         top_path = os.path.join(assets_folder, "top.png")
@@ -758,82 +726,7 @@ with tab5:
             st.warning(f"⚠️ Missing front.png for {config_id}, using default.")
             front_path = "robot_default.png"
 
-        layout_overview_top = InlineImage(doc, top_path, width=Mm(150), height=Mm(80))
-        layout_overview_front = InlineImage(doc, front_path, width=Mm(150), height=Mm(80))
 
-
-        if gripper_type:
-            gripper_images = []
-            for gtype in gripper_type.keys():
-                base_name = gtype.lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
-                gripper_filename = f"gripper_{base_name}.png"
-                if not os.path.exists(gripper_filename):
-                    gripper_filename = "gripper_default.png"
-                gripper_images.append(InlineImage(doc, gripper_filename, width=Mm(100), height=Mm(80)))
-        else:
-            gripper_images = [InlineImage(doc, "gripper_default.png", width=Mm(100), height=Mm(80))]
-
-
-        # Create InlineImage for docxtpl using in-memory BytesIO
-        price_table_img = InlineImage(doc, save_df_as_image(df, currency=currency), width=Mm(160))
-
-        context = {
-            "value_proposition": value_proposition,
-            "application_overview": application_overview,
-            "client_name": client_name,
-            "client_company": client_company,
-            "quote_date": quote_date.strftime("%B %d, %Y"),
-            "site_location": site_location,
-            "robot_type": robot_type,
-            "robot_arms": inputs["robot_arms"],
-            "robot_bases": sum(robot_bases.values()) if isinstance(robot_bases, dict) else robot_bases,
-            "gripper_type": ", ".join(gripper_type),
-            "vision_system": ", ".join(vision_system),
-            "materials": ", ".join(materials),
-            "belt_speed": belt_speed,
-            "pick_rate": pick_rate,
-            "max_object_weight": max_object_weight,
-            "input_power_kva": input_power_kva,
-            "avg_consumption_kw": avg_consumption_kw,
-            "air_consumption_lpm": air_consumption_lpm,
-            "total_price": f"{currency} {total:,.0f}",
-            "warranty_option": warranty_option,
-            "safety_fencing": safety_fencing,
-            "try_and_buy": try_and_buy,
-            "layout_image": layout_image,
-            "gripper_images": gripper_images,
-            "robot_arm_images": robot_arm_images,
-            "order_confirmation_project_kickoff": order_confirmation_project_kickoff,
-            "detailed_engineering": detailed_engineering,
-            "engineering_review": engineering_review,
-            "procurement_fabrication": procurement_fabrication,
-            "fat_shipping": fat_shipping,
-            "retrofit_installation": retrofit_installation,
-            "commissioning_and_SAT": commissioning_and_SAT,
-            "price_table_img": price_table_img,
-            "layout_overview_top": layout_overview_top,
-            "layout_overview_front": layout_overview_front,
-        }
-
-
-
-        import tempfile
-
-        doc.render(context)
-
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".docx") as tmp:
-            temp_file_path = tmp.name
-            doc.save(temp_file_path)
-
-        st.success("✅ Quote generated successfully!")
-
-        with open(temp_file_path, "rb") as f:
-            st.download_button(
-                label="📄 Download Quote DOCX",
-                data=f,
-                file_name=f"{client_name}_Quote_{quote_date.strftime('%Y%m%d')}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            )
 
         # --- PowerPoint Generation ---
         prs = Presentation()
@@ -1448,7 +1341,7 @@ with tab5:
         # #robot bases
         if robot_bases:
             for btype, qty in robot_bases.items():
-                inclusions_list.append(f"{qty} x {btype} robot base(s)")
+                inclusions_list.append(f"{qty} x robot base(s)")
         # # of grippers
         if gripper_type:
             for gtype, qty in gripper_type.items():
