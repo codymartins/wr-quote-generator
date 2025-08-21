@@ -663,7 +663,6 @@ with tab5:
         st.dataframe(df.style.format({"Unit Price": "${:,.0f}", "Subtotal": "${:,.0f}"}))
         st.markdown(f"### **Total Estimated Price: {currency} {total:,.0f}**")
 
-        # --- DOCX Generation ---
  
 
         # --- Build Configuration ID for Image Lookup ---
@@ -730,6 +729,8 @@ with tab5:
 
         # --- PowerPoint Generation ---
         prs = Presentation()
+        prs.slide_width = Inches(8.5)
+        prs.slide_height = Inches(11)
         slide_width = prs.slide_width
         slide_height = prs.slide_height
 
@@ -802,12 +803,15 @@ with tab5:
         # Branding colors
         BRAND_RED = RGBColor(239, 58, 45)   # #EF3A2D
         BRAND_DARK = RGBColor(15, 15, 15)   # #0F0F0F
+        WHITE = RGBColor(255, 255, 255)
 
-        def add_branding(slide):
-            # Set background color
+        def add_branding(slide, bg_color=None):
+            # Set background color (default to BRAND_DARK if not specified)
+            if bg_color is None:
+                bg_color = BRAND_DARK
             fill = slide.background.fill
             fill.solid()
-            fill.fore_color.rgb = BRAND_DARK
+            fill.fore_color.rgb = bg_color
 
             # Add logo (top left)
             slide.shapes.add_picture("logo1.png", Inches(0.2), Inches(0.2), width=Inches(1.5))
@@ -856,7 +860,7 @@ with tab5:
         # Title text on left half (never overlaps image)
         left = Inches(0.25)
         top = Inches(1.2)
-        width = Inches(4.5)
+        width = Inches(4.25)
         height = Inches(1.2)
         title_shape = slide.shapes.add_textbox(left, top, width, height)
         title_frame = title_shape.text_frame
@@ -887,7 +891,7 @@ with tab5:
         line_shape.line.width = Pt(0)
 
         # Info box below title (also only left half)
-        info_shape = slide.shapes.add_textbox(left, line_top + Inches(0.2), width, Inches(2.25))
+        info_shape = slide.shapes.add_textbox(left, line_top + Inches(0.2), width, Inches(1.75))
         info_frame = info_shape.text_frame
         info_frame.clear()
         p = info_frame.add_paragraph()
@@ -896,16 +900,17 @@ with tab5:
         p.font.color.rgb = LIGHT_BLUE
         p.font.name = FONT_NAME
 
+
         # --- Application Overview Slide ---
         slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
+        add_branding(slide, WHITE)
         for shape in list(slide.shapes):
             if shape.is_placeholder:
                 slide.shapes._spTree.remove(shape._element)
 
         # Colors and font
         BLUE = RGBColor(46, 125, 122)  # #2e7d7a
-        WHITE = RGBColor(255, 255, 255)
+        BRAND_DARK = RGBColor(15, 15, 15)
         FONT_NAME = "Arial"
 
         # Heading: Application Overview
@@ -934,7 +939,7 @@ with tab5:
         p = overview_frame.add_paragraph()
         p.text = application_overview
         p.font.size = Pt(20)
-        p.font.color.rgb = WHITE
+        p.font.color.rgb = BRAND_DARK
         p.font.name = FONT_NAME
 
         # "Preliminary layout design (#arm-system)" section
@@ -971,7 +976,7 @@ with tab5:
 
         # --- Layout Images Slide ---
         slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
+        add_branding(slide, WHITE)
         for shape in list(slide.shapes):
             if shape.is_placeholder:
                 slide.shapes._spTree.remove(shape._element)
@@ -992,9 +997,6 @@ with tab5:
         p.font.color.rgb = RGBColor(46, 125, 122)  # #2e7d7a
         p.font.name = "Arial"
 
-        # Arrange images side by side, centered, keeping natural proportions
-        from PIL import Image as PILImage
-
         def get_scaled_size(img_path, max_width_in, max_height_in):
             img = PILImage.open(img_path)
             img_w, img_h = img.size
@@ -1004,21 +1006,19 @@ with tab5:
             scale = min(max_w_px / img_w, max_h_px / img_h, 1.0)
             return img_w * scale / dpi, img_h * scale / dpi  # return in inches
 
-        max_img_width = Inches(4)
-        max_img_height = Inches(3)
+        max_img_width = 5
+        max_img_height = 4
         spacing = Inches(0.5)
 
-        # Top view image (left)
-        top_w_in, top_h_in = get_scaled_size(top_path, 4, 3)
-        # Front view image (right)
-        front_w_in, front_h_in = get_scaled_size(front_path, 4, 3)
+        # Get scaled sizes
+        top_w_in, top_h_in = get_scaled_size(top_path, max_img_width, max_img_height)
+        front_w_in, front_h_in = get_scaled_size(front_path, max_img_width, max_img_height)
 
-        # Calculate total width for centering
-        total_width = Inches(top_w_in) + Inches(front_w_in) + spacing
+        # Center horizontally
+        img_left = Inches(1)
         img_top = title_top + title_height + Inches(0.3)
-        img_left = (slide_width - total_width) // 2
 
-        # Top view image (left)
+        # Top view image (top)
         slide.shapes.add_picture(
             top_path,
             img_left,
@@ -1027,119 +1027,118 @@ with tab5:
             height=Inches(top_h_in)
         )
 
-        # Front view image (right)
+        # Front view image (below top view)
+        front_img_top = img_top + Inches(top_h_in) + spacing
         slide.shapes.add_picture(
             front_path,
-            img_left + Inches(top_w_in) + spacing,
-            img_top,
+            img_left,
+            front_img_top,
             width=Inches(front_w_in),
             height=Inches(front_h_in)
         )
-        add_page_number(slide, 2)
-        add_footer_bar(slide)
-        add_watermark(slide)
 
-        # --- Robot Arm & Gripper Model Slide ---
-        slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
-        for shape in list(slide.shapes):
-            if shape.is_placeholder:
-                slide.shapes._spTree.remove(shape._element)
-
-        BLUE = RGBColor(46, 125, 122)
-        FONT_NAME = "Arial"
-
-        # Layout parameters
-        margin_left = Inches(0.7)
-        margin_right = Inches(5)
-        title_top = Inches(1.0)
-        title_height = Inches(0.4)
-        gap_after_title = Inches(0.4)
-        img_top_start = title_top
-        img_width = Inches(3.0)
-        img_height = Inches(2.2)
-        img_spacing = Inches(0.3)
-
-        # --- Robot Arms (left column) ---
+        # --- Robot Arm Model Slides (one per type) ---
         if robot_type:
             for idx, rtype in enumerate(robot_type.keys()):
-                # Title for each arm
-                arm_title_top = img_top_start + idx * (title_height + img_height + img_spacing)
-                arm_title_shape = slide.shapes.add_textbox(
-                    margin_left,
-                    arm_title_top,
-                    img_width,
-                    title_height
-                )
-                arm_title_frame = arm_title_shape.text_frame
-                arm_title_frame.clear()
-                p = arm_title_frame.add_paragraph()
+                slide = prs.slides.add_slide(blank_layout)
+                add_branding(slide, WHITE)
+                for shape in list(slide.shapes):
+                    if shape.is_placeholder:
+                        slide.shapes._spTree.remove(shape._element)
+
+                BLUE = RGBColor(46, 125, 122)
+                FONT_NAME = "Arial"
+
+                # Title
+                title_left = Inches(0.7)
+                title_top = Inches(1.0)
+                title_width = Inches(7)
+                title_height = Inches(0.8)
+                title_shape = slide.shapes.add_textbox(title_left, title_top, title_width, title_height)
+                title_frame = title_shape.text_frame
+                title_frame.clear()
+                p = title_frame.add_paragraph()
                 p.text = f"Robot Arm Model: {rtype}"
-                p.font.size = Pt(18)
+                p.font.size = Pt(28)
                 p.font.bold = True
                 p.font.color.rgb = BLUE
                 p.font.name = FONT_NAME
 
-                # Image for each arm
-                arm_img_top = arm_title_top + title_height + gap_after_title
+                # Image for the arm
+                img_top = title_top + title_height + Inches(0.3)
+                img_width = Inches(8)
+                img_height = Inches(6)
                 base_name = rtype.lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
                 robot_arm_filename = f"robot_{base_name}.png"
                 if not os.path.exists(robot_arm_filename):
                     robot_arm_filename = "robot_default.png"
                 slide.shapes.add_picture(
                     robot_arm_filename,
-                    margin_left + Inches(0.15),
-                    arm_img_top,
+                    (slide_width - img_width) // 2,
+                    img_top,
                     width=img_width,
                     height=img_height
                 )
+                add_page_number(slide, 4 + idx)
+                add_footer_bar(slide)
+                add_watermark(slide)
 
-        # --- Grippers (right column) ---
+        # --- Gripper Model Slides (one per type) ---
         if gripper_type:
             for idx, gtype in enumerate(gripper_type.keys()):
-                # Title for each gripper
-                gripper_title_top = img_top_start + idx * (title_height + img_height + img_spacing)
-                gripper_title_shape = slide.shapes.add_textbox(
-                    margin_right - Inches(0.15),
-                    gripper_title_top,
-                    img_width,
-                    title_height
-                )
-                gripper_title_frame = gripper_title_shape.text_frame
-                gripper_title_frame.clear()
-                p = gripper_title_frame.add_paragraph()
+                slide = prs.slides.add_slide(blank_layout)
+                add_branding(slide, WHITE)
+                for shape in list(slide.shapes):
+                    if shape.is_placeholder:
+                        slide.shapes._spTree.remove(shape._element)
+
+                BLUE = RGBColor(46, 125, 122)
+                FONT_NAME = "Arial"
+
+                # Title
+                title_left = Inches(0.7)
+                title_top = Inches(1.0)
+                title_width = Inches(7)
+                title_height = Inches(0.8)
+                title_shape = slide.shapes.add_textbox(title_left, title_top, title_width, title_height)
+                title_frame = title_shape.text_frame
+                title_frame.clear()
+                p = title_frame.add_paragraph()
                 p.text = f"Gripper Model: {gtype}"
-                p.font.size = Pt(18)
+                p.font.size = Pt(28)
                 p.font.bold = True
                 p.font.color.rgb = BLUE
                 p.font.name = FONT_NAME
 
-                # Image for each gripper
-                gripper_img_top = gripper_title_top + title_height + gap_after_title
+                # Image for the gripper
+                img_top = title_top + title_height + Inches(0.3)
+                img_width = Inches(8)
+                img_height = Inches(6)
                 base_name = gtype.lower().replace(" ", "_").replace("&", "and").replace(",", "").replace("-", "_")
                 gripper_filename = f"gripper_{base_name}.png"
                 if not os.path.exists(gripper_filename):
                     gripper_filename = "gripper_default.png"
                 slide.shapes.add_picture(
                     gripper_filename,
-                    margin_right,
-                    gripper_img_top,
+                    (slide_width - img_width) // 2,
+                    img_top,
                     width=img_width,
                     height=img_height
                 )
-        add_page_number(slide, 3)
-        add_footer_bar(slide)
-        add_watermark(slide)
+                # Page number: after all arm slides
+                add_page_number(slide, 4 + len(robot_type) + idx)
+                add_footer_bar(slide)
+                add_watermark(slide)
 
         # --- Vision System Sensor Fusion Slide (Centered Titles/Labels) ---
         slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
+        add_branding(slide, WHITE)
         for shape in list(slide.shapes):
             if shape.is_placeholder:
                 slide.shapes._spTree.remove(shape._element)
 
         BLUE = RGBColor(46, 125, 122)
-        WHITE = RGBColor(255, 255, 255)
+        BRAND_DARK = RGBColor(15, 15, 15)
         BLACK = RGBColor(12, 12, 12)
         FONT_NAME = "Arial"
 
@@ -1148,7 +1147,7 @@ with tab5:
         main_title_width = Inches(8)
         main_title_height = Inches(0.8)
         main_title_left = (slide_width - main_title_width) // 2
-        main_title_top = Inches(1)
+        main_title_top = Inches(1.3)
         title_shape = slide.shapes.add_textbox(main_title_left, main_title_top, main_title_width, main_title_height)
         title_frame = title_shape.text_frame
         title_frame.clear()
@@ -1183,7 +1182,7 @@ with tab5:
         vision_img_path = "vision_system.png"
         vision_img_width = Inches(2.5)
         vision_img_height = Inches(2)
-        vision_img_left = Inches(1.4)
+        vision_img_left = Inches(0.7)
         vision_img_top = main_title_top + main_title_height + Inches(1.25)
         slide.shapes.add_picture(
             vision_img_path,
@@ -1207,7 +1206,7 @@ with tab5:
         p.text = "Deepvision"
         p.font.size = Pt(16)
         p.font.bold = False
-        p.font.color.rgb = WHITE
+        p.font.color.rgb = BRAND_DARK
         p.font.name = FONT_NAME
         label_frame.paragraphs[0].alignment = 1  # Center
 
@@ -1215,7 +1214,7 @@ with tab5:
         comparison_img_path = "vision_comparison.png"
         comparison_img_width = Inches(3.75)
         comparison_img_height = Inches(4)
-        comparison_img_left = Inches(5.0)
+        comparison_img_left = Inches(4.3)
         comparison_img_top = main_title_top + main_title_height + Inches(0.2)
         slide.shapes.add_picture(
             comparison_img_path,
@@ -1243,7 +1242,7 @@ with tab5:
             p.text = section
             p.font.size = Pt(14)
             p.font.bold = False
-            p.font.color.rgb = WHITE
+            p.font.color.rgb = BRAND_DARK
             p.font.name = FONT_NAME
             section_frame.paragraphs[0].alignment = 1  # Center
         add_page_number(slide, 4)
@@ -1252,7 +1251,7 @@ with tab5:
 
         # --- Inclusions & Exclusions Slide ---
         slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
+        add_branding(slide, WHITE)
         for shape in list(slide.shapes):
             if shape.is_placeholder:
                 slide.shapes._spTree.remove(shape._element)
@@ -1393,7 +1392,7 @@ with tab5:
         )
 
         # --- Right: Exclusions ---
-        exclusions_left = half_width
+        exclusions_left = half_width 
         exclusions_top = bar_height
         exclusions_width = half_width
         exclusions_height = slide_height - Inches(1.25);
@@ -1449,7 +1448,7 @@ with tab5:
 
         # Exclusions list text box
         exclusions_text = "\n".join(f"• {item}" for item in exclusions_list)
-        exclusions_box_left = Inches(5.2)
+        exclusions_box_left = Inches(4.7)
         exclusions_box_top = Inches(1.7)
         exclusions_box_width = Inches(3.8)
         exclusions_box_height = slide_height - exclusions_box_top - Inches(0.3)
@@ -1470,13 +1469,13 @@ with tab5:
 
         # --- System Specifications & Buying Price Slide (Stacked vertically) ---
         slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
+        add_branding(slide, WHITE)
         for shape in list(slide.shapes):
             if shape.is_placeholder:
                 slide.shapes._spTree.remove(shape._element)
 
         BLUE = RGBColor(46, 125, 122)
-        WHITE = RGBColor(255, 255, 255)
+        BRAND_DARK = RGBColor(15, 15, 15)
         FONT_NAME = "Arial"
 
         # Margins and widths
@@ -1516,7 +1515,7 @@ with tab5:
         p = specs_content_frame.add_paragraph()
         p.text = specs_content
         p.font.size = Pt(16)
-        p.font.color.rgb = WHITE
+        p.font.color.rgb = BRAND_DARK
         p.font.name = FONT_NAME
 
         # --- Thin blue line between sections ---
@@ -1571,7 +1570,7 @@ with tab5:
         p = price_content_frame.add_paragraph()
         p.text = price_content
         p.font.size = Pt(16)
-        p.font.color.rgb = WHITE
+        p.font.color.rgb = BRAND_DARK
         p.font.name = FONT_NAME
 
         # Disclaimer in small white font
@@ -1587,7 +1586,7 @@ with tab5:
         p = disclaimer_frame.add_paragraph()
         p.text = disclaimer
         p.font.size = Pt(10)
-        p.font.color.rgb = WHITE
+        p.font.color.rgb = BRAND_DARK
         p.font.name = FONT_NAME
         add_page_number(slide, 6)
         add_footer_bar(slide)
@@ -1595,7 +1594,7 @@ with tab5:
 
         # --- Timeline Slide with Alternating Connectors and Unified Durations ---
         slide = prs.slides.add_slide(blank_layout)
-        add_branding(slide)
+        add_branding(slide, WHITE)
         for shape in list(slide.shapes):
             if shape.is_placeholder:
                 slide.shapes._spTree.remove(shape._element)
