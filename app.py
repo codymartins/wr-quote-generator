@@ -1016,6 +1016,7 @@ with tab4:
         overview_shape = slide.shapes.add_textbox(overview_left, overview_top, overview_width, overview_height)
         overview_frame = overview_shape.text_frame
         overview_frame.clear()
+        overview_frame.word_wrap = True  # Ensure text wraps within the box
         p = overview_frame.add_paragraph()
         p.text = application_overview
         p.font.size = Pt(20)
