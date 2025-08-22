@@ -750,6 +750,17 @@ with tab4:
         base_assets_path = os.path.abspath("Assets")
         assets_folder = os.path.join(base_assets_path, config_id)
 
+        # Fallback: If the folder for the selected gripper doesn't exist, use another gripper's images for the same layout
+        if not os.path.isdir(assets_folder):
+            alt_folder, alt_gripper = get_existing_config_folder(
+                num_arms, robot_type_str, disposition_str, vrs_model_str, gripper_types_list, base_assets_path
+            )
+            if alt_folder != base_assets_path:
+                st.info(f"Using images from configuration with gripper '{alt_gripper}'.")
+                assets_folder = alt_folder
+            else:
+                st.warning("No alternate configuration images found, using default images.")
+                assets_folder = base_assets_path  # fallback to root
 
         # --- ISO Image ---
         iso_path = os.path.join(assets_folder, "iso.png")
