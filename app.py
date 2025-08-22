@@ -1209,7 +1209,26 @@ with tab4:
                     width=img_width,
                     height=img_height
                 )
+                # Add a thin blue line beneath the image and above the text
+                line_left = Inches(1.0)
+                line_top = img_top + img_height + Inches(0.1)
+                line_width = slide_width - 2 * line_left
+                line_height = Pt(2)
+                line_shape = slide.shapes.add_shape(
+                    1,  # msoShapeRectangle
+                    line_left,
+                    line_top,
+                    line_width,
+                    line_height
+                )
+                fill = line_shape.fill
+                fill.solid()
+                fill.fore_color.rgb = BLUE
+                line_shape.line.color.rgb = BLUE
+                line_shape.line.width = Pt(0)
 
+                # --- Add gripper info section below image ---
+                info_top = line_top + Inches(0.1)
                 # --- Add gripper info section below image ---
                 specs = GRIPPER_SPECS.get(gtype, {})
                 info_text = (
@@ -1249,7 +1268,7 @@ with tab4:
         main_title = "ROBOT VISION SYSTEM SENSOR FUSION"
         main_title_width = Inches(8)
         main_title_height = Inches(0.8)
-        main_title_left = (slide_width - main_title_width) // 2
+        main_title_left = Inches(1)
         main_title_top = Inches(1.3)
         title_shape = slide.shapes.add_textbox(main_title_left, main_title_top, main_title_width, main_title_height)
         title_frame = title_shape.text_frame
